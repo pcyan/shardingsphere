@@ -2,7 +2,7 @@ name: Sync Fork
 
 on:
   schedule:
-    - cron: '0 9 * * *' # every 30 minutes
+    - cron: '0 9 * * *' # every day 09:00
   workflow_dispatch: # on button click
 
 jobs:
@@ -13,6 +13,7 @@ jobs:
     steps:
       - uses: tgymnich/fork-sync@v1.6.3
         with:
+          token: ${{ secrets.PERSONAL_TOKEN }}
           owner: apache
           base: master
           head: master
