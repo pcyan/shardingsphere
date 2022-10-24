@@ -14,19 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
-grammar BaseRule;
 
-import Symbol, Keyword, Literals;
+package org.apache.shardingsphere.sql.parser.sql.dialect.statement.opengauss.dal;
 
-databaseName
-    : IDENTIFIER
-    ;
-    
-resourceName
-    : IDENTIFIER
-    ;
+import lombok.ToString;
+import org.apache.shardingsphere.sql.parser.sql.common.statement.dal.EmptyStatement;
+import org.apache.shardingsphere.sql.parser.sql.dialect.statement.opengauss.OpenGaussStatement;
 
-groupName
-    : IDENTIFIER
-    ;
+/**
+ * OpenGauss empty statement.
+ */
+@ToString(callSuper = true)
+public final class OpenGaussEmptyStatement extends EmptyStatement implements OpenGaussStatement {
+}
