@@ -19,10 +19,10 @@ package org.apache.shardingsphere.db.protocol.mysql.packet.command.query.binary.
 
 import io.netty.buffer.ByteBuf;
 import org.apache.shardingsphere.db.protocol.mysql.payload.MySQLPacketPayload;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.nio.charset.StandardCharsets;
 
@@ -31,21 +31,21 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
-public final class MySQLDoubleBinaryProtocolValueTest {
+@ExtendWith(MockitoExtension.class)
+class MySQLDoubleBinaryProtocolValueTest {
     
     @Mock
     private ByteBuf byteBuf;
     
     @Test
-    public void assertRead() {
-        when(byteBuf.readDoubleLE()).thenReturn(1.0d);
-        assertThat(new MySQLDoubleBinaryProtocolValue().read(new MySQLPacketPayload(byteBuf, StandardCharsets.UTF_8)), is(1.0d));
+    void assertRead() {
+        when(byteBuf.readDoubleLE()).thenReturn(1.0D);
+        assertThat(new MySQLDoubleBinaryProtocolValue().read(new MySQLPacketPayload(byteBuf, StandardCharsets.UTF_8), false), is(1.0D));
     }
     
     @Test
-    public void assertWrite() {
-        new MySQLDoubleBinaryProtocolValue().write(new MySQLPacketPayload(byteBuf, StandardCharsets.UTF_8), 1.0d);
-        verify(byteBuf).writeDoubleLE(1.0d);
+    void assertWrite() {
+        new MySQLDoubleBinaryProtocolValue().write(new MySQLPacketPayload(byteBuf, StandardCharsets.UTF_8), 1.0D);
+        verify(byteBuf).writeDoubleLE(1.0D);
     }
 }

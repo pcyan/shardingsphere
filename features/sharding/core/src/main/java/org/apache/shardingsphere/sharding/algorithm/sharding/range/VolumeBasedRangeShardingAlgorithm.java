@@ -17,9 +17,10 @@
 
 package org.apache.shardingsphere.sharding.algorithm.sharding.range;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.Range;
 import com.google.common.math.LongMath;
+import org.apache.shardingsphere.infra.algorithm.core.exception.AlgorithmInitializationException;
+import org.apache.shardingsphere.infra.exception.core.ShardingSpherePreconditions;
 
 import java.math.RoundingMode;
 import java.util.HashMap;
@@ -39,15 +40,15 @@ public final class VolumeBasedRangeShardingAlgorithm extends AbstractRangeShardi
     
     @Override
     public Map<Integer, Range<Comparable<?>>> calculatePartitionRange(final Properties props) {
-        Preconditions.checkState(props.containsKey(RANGE_LOWER_KEY), "Lower range cannot be null.");
-        Preconditions.checkState(props.containsKey(RANGE_UPPER_KEY), "Upper range cannot be null.");
-        Preconditions.checkState(props.containsKey(SHARDING_VOLUME_KEY), "Sharding volume cannot be null.");
+        ShardingSpherePreconditions.checkContainsKey(props, RANGE_LOWER_KEY, () -> new AlgorithmInitializationException(this, "Lower range cannot be null."));
+        ShardingSpherePreconditions.checkContainsKey(props, RANGE_UPPER_KEY, () -> new AlgorithmInitializationException(this, "Upper range cannot be null."));
+        ShardingSpherePreconditions.checkContainsKey(props, SHARDING_VOLUME_KEY, () -> new AlgorithmInitializationException(this, "Sharding volume cannot be null."));
         long lower = Long.parseLong(props.getProperty(RANGE_LOWER_KEY));
         long upper = Long.parseLong(props.getProperty(RANGE_UPPER_KEY));
         long volume = Long.parseLong(props.getProperty(SHARDING_VOLUME_KEY));
-        Preconditions.checkArgument(upper - lower >= volume, "Range can not be smaller than volume.");
+        ShardingSpherePreconditions.checkState(upper - lower >= volume, () -> new AlgorithmInitializationException(this, "Range can not be smaller than volume."));
         int partitionSize = Math.toIntExact(LongMath.divide(upper - lower, volume, RoundingMode.CEILING));
-        Map<Integer, Range<Comparable<?>>> result = new HashMap<>(partitionSize + 2, 1);
+        Map<Integer, Range<Comparable<?>>> result = new HashMap<>(partitionSize + 2, 1F);
         result.put(0, Range.lessThan(lower));
         for (int i = 0; i < partitionSize; i++) {
             result.put(i + 1, Range.closedOpen(lower + i * volume, Math.min(lower + (i + 1) * volume, upper)));

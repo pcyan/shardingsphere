@@ -17,14 +17,15 @@
 
 package org.apache.shardingsphere.sharding.route.strategy.type.standard;
 
-import com.google.common.base.Preconditions;
+import com.cedarsoftware.util.CaseInsensitiveSet;
 import lombok.Getter;
 import org.apache.shardingsphere.infra.config.props.ConfigurationProperties;
 import org.apache.shardingsphere.infra.datanode.DataNodeInfo;
+import org.apache.shardingsphere.infra.exception.core.ShardingSpherePreconditions;
 import org.apache.shardingsphere.sharding.api.sharding.standard.PreciseShardingValue;
 import org.apache.shardingsphere.sharding.api.sharding.standard.RangeShardingValue;
 import org.apache.shardingsphere.sharding.api.sharding.standard.StandardShardingAlgorithm;
-import org.apache.shardingsphere.sharding.exception.algorithm.ShardingRouteAlgorithmException;
+import org.apache.shardingsphere.sharding.exception.metadata.MissingRequiredShardingConfigurationException;
 import org.apache.shardingsphere.sharding.route.engine.condition.value.ListShardingConditionValue;
 import org.apache.shardingsphere.sharding.route.engine.condition.value.RangeShardingConditionValue;
 import org.apache.shardingsphere.sharding.route.engine.condition.value.ShardingConditionValue;
@@ -33,7 +34,6 @@ import org.apache.shardingsphere.sharding.route.strategy.ShardingStrategy;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
-import java.util.TreeSet;
 
 /**
  * Standard sharding strategy.
@@ -46,9 +46,9 @@ public final class StandardShardingStrategy implements ShardingStrategy {
     private final StandardShardingAlgorithm<?> shardingAlgorithm;
     
     public StandardShardingStrategy(final String shardingColumn, final StandardShardingAlgorithm<?> shardingAlgorithm) {
-        Preconditions.checkNotNull(shardingColumn, "Sharding column cannot be null.");
-        Preconditions.checkNotNull(shardingAlgorithm, "sharding algorithm cannot be null.");
-        Collection<String> shardingColumns = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        ShardingSpherePreconditions.checkNotNull(shardingColumn, () -> new MissingRequiredShardingConfigurationException("Standard sharding column"));
+        ShardingSpherePreconditions.checkNotNull(shardingAlgorithm, () -> new MissingRequiredShardingConfigurationException("Standard sharding algorithm"));
+        Collection<String> shardingColumns = new CaseInsensitiveSet<>();
         shardingColumns.add(shardingColumn);
         this.shardingColumns = Collections.unmodifiableCollection(shardingColumns);
         this.shardingAlgorithm = shardingAlgorithm;
@@ -62,22 +62,19 @@ public final class StandardShardingStrategy implements ShardingStrategy {
         Collection<String> shardingResult = shardingConditionValue instanceof ListShardingConditionValue
                 ? doSharding(availableTargetNames, (ListShardingConditionValue) shardingConditionValue, dataNodeInfo)
                 : doSharding(availableTargetNames, (RangeShardingConditionValue) shardingConditionValue, dataNodeInfo);
-        Collection<String> result = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-        result.addAll(shardingResult);
-        return result;
+        return new CaseInsensitiveSet<>(shardingResult);
     }
     
     @SuppressWarnings({"unchecked", "rawtypes"})
     private Collection<String> doSharding(final Collection<String> availableTargetNames, final ListShardingConditionValue<?> shardingValue, final DataNodeInfo dataNodeInfo) {
         Collection<String> result = new LinkedList<>();
-        for (Comparable<?> each : shardingValue.getValues()) {
+        for (Object each : shardingValue.getValues()) {
             String target = shardingAlgorithm.doSharding(availableTargetNames,
                     new PreciseShardingValue(shardingValue.getTableName(), shardingValue.getColumnName(), dataNodeInfo, each));
             if (null != target && availableTargetNames.contains(target)) {
                 result.add(target);
-            } else if (null != target && !availableTargetNames.contains(target)) {
-                throw new ShardingRouteAlgorithmException(target, availableTargetNames);
             }
+            // TODO add ShardingRouteAlgorithmException check when autoTables support config actualDataNodes in #33364
         }
         return result;
     }

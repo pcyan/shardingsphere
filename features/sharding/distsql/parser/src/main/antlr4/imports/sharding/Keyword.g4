@@ -51,8 +51,8 @@ FROM
     : F R O M
     ;
 
-RESOURCES
-    : R E S O U R C E S
+STORAGE_UNITS
+    : S T O R A G E UL_ U N I T S
     ;
 
 KEY_GENERATE_STRATEGY
@@ -91,12 +91,8 @@ COLUMN
     : C O L U M N
     ;
 
-BINDING
-    : B I N D I N G
-    ;
-
-BROADCAST
-    : B R O A D C A S T
+REFERENCE
+    : R E F E R E N C E
     ;
 
 RULES
@@ -117,30 +113,6 @@ ALGORITHMS
 
 HINT
     : H I N T
-    ;
-
-SET
-    : S E T
-    ;
-
-ADD
-    : A D D
-    ;
-
-DATABASE_VALUE
-    : D A T A B A S E UL_ V A L U E
-    ;
-
-TABLE_VALUE
-    : T A B L E UL_ V A L U E
-    ;
-
-STATUS
-    : S T A T U S
-    ;
-
-CLEAR
-    : C L E A R
     ;
 
 DEFAULT
@@ -206,7 +178,7 @@ IF
 EXISTS
     : E X I S T S
     ;
-    
+
 WITH
     : W I T H
     ;
@@ -229,4 +201,84 @@ AUDIT_STRATEGY
 
 ALLOW_HINT_DISABLE
     : A L L O W UL_ H I N T UL_ D I S A B L E
+    ;
+
+TRUE
+    : T R U E
+    ;
+
+FALSE
+    : F A L S E
+    ;
+
+MOD
+    : M O D
+    ;
+
+HASH_MOD
+    : H A S H UL_ M O D
+    ;
+
+VOLUME_RANGE
+    : V O L U M E UL_ R A N G E
+    ;
+
+BOUNDARY_RANGE
+    : B O U N D A R Y UL_ R A N G E
+    ;
+
+AUTO_INTERVAL
+    : A U T O UL_ I N T E R V A L
+    ;
+
+INLINE
+    : I N L I N E
+    ;
+
+INTERVAL
+    : I N T E R V A L
+    ;
+
+COMPLEX_INLINE
+    : C O M P L E X UL_ I N L I N E
+    ;
+
+HINT_INLINE
+    : H I N T UL_ I N L I N E
+    ;
+
+CLASS_BASED
+    : C L A S S UL_ B A S E D
+    ;
+
+SNOWFLAKE
+    : S N O W F L A K E
+    ;
+
+UUID
+    : U U I D
+    ;
+
+STANDARD
+    : S T A N D A R D
+    ;
+
+COMPLEX
+    : C O M P L E X
+    ;
+
+DML_SHARDING_CONDITIONS
+    : D M L UL_ S H A R D I N G UL_ C O N D I T I O N S
+    ;
+
+NOT
+    : N O T
+    ;
+
+NONE
+    : N O N E
+    ;
+
+PLUGINS
+    : P L U G I N S
     ;

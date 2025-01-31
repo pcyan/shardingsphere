@@ -21,7 +21,7 @@ import io.netty.buffer.ByteBuf;
 import org.apache.shardingsphere.db.protocol.mysql.packet.binlog.row.column.MySQLBinlogColumnDef;
 import org.apache.shardingsphere.db.protocol.mysql.packet.binlog.row.column.value.MySQLBinlogProtocolValue;
 import org.apache.shardingsphere.db.protocol.mysql.payload.MySQLPacketPayload;
-import org.apache.shardingsphere.infra.util.exception.external.sql.type.generic.UnsupportedSQLOperationException;
+import org.apache.shardingsphere.infra.exception.generic.UnsupportedSQLOperationException;
 
 import java.io.Serializable;
 
@@ -31,7 +31,6 @@ import java.io.Serializable;
  * <p>
  *     There are no detail document about JSON type in MySQL replication.
  *     Also no detail document in MariaDB.
- *
  *     Decoding implementation is referred to MySQL source code.
  * </p>
  *

@@ -17,9 +17,8 @@
 
 package org.apache.shardingsphere.sqlfederation.optimizer.context.parser.dialect;
 
-import org.apache.shardingsphere.infra.util.spi.annotation.SingletonSPI;
-import org.apache.shardingsphere.infra.util.spi.type.required.RequiredSPI;
-import org.apache.shardingsphere.infra.util.spi.type.typed.TypedSPI;
+import org.apache.shardingsphere.infra.database.core.spi.DatabaseTypedSPI;
+import org.apache.shardingsphere.infra.spi.annotation.SingletonSPI;
 
 import java.util.Properties;
 
@@ -27,11 +26,11 @@ import java.util.Properties;
  * Optimizer SQL dialect properties builder.
  */
 @SingletonSPI
-public interface OptimizerSQLDialectBuilder extends TypedSPI, RequiredSPI {
+public interface OptimizerSQLDialectBuilder extends DatabaseTypedSPI {
     
     /**
      * Build optimizer SQL dialect properties.
-     * 
+     *
      * @return built properties
      */
     Properties build();

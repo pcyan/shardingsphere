@@ -14,19 +14,49 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 grammar BaseRule;
 
 import Symbol, Keyword, Literals;
 
-databaseName
-    : IDENTIFIER
-    ;
-    
-resourceName
-    : IDENTIFIER
+literal
+    : STRING_ | (MINUS_)? INT_ | TRUE | FALSE
     ;
 
-groupName
-    : IDENTIFIER
+algorithmDefinition
+    : TYPE LP_ NAME EQ_ algorithmTypeName (COMMA_ propertiesDefinition)? RP_
+    ;
+
+algorithmTypeName
+    : STRING_ | buildInReadQueryLoadBalanceAlgorithmType
+    ;
+
+buildInReadQueryLoadBalanceAlgorithmType
+    : ROUND_ROBIN
+    | RANDOM
+    | WEIGHT
+    ;
+
+propertiesDefinition
+    : PROPERTIES LP_ properties? RP_
+    ;
+
+properties
+    : property (COMMA_ property)*
+    ;
+
+property
+    : key=STRING_ EQ_ value=literal
+    ;
+
+databaseName
+    : IDENTIFIER_
+    ;
+
+ruleName
+    : IDENTIFIER_
+    ;
+
+storageUnitName
+    : IDENTIFIER_
     ;

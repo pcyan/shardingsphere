@@ -58,7 +58,19 @@ ENCRYPT
 TYPE
     : T Y P E
     ;
-    
+
+ENCRYPT_ALGORITHM
+    : E N C R Y P T UL_ A L G O R I T H M
+    ;
+
+ASSISTED_QUERY_ALGORITHM
+    : A S S I S T E D UL_ Q U E R Y UL_ A L G O R I T H M
+    ;
+
+LIKE_QUERY_ALGORITHM
+    : L I K E UL_ Q U E R Y UL_ A L G O R I T H M
+    ;
+
 NAME
     : N A M E
     ;
@@ -87,50 +99,58 @@ CIPHER
     : C I P H E R
     ;
 
-PLAIN
-    : P L A I N
+ASSISTED_QUERY
+    : A S S I S T E D UL_ Q U E R Y
     ;
-    
+
 ASSISTED_QUERY_COLUMN
     : A S S I S T E D UL_ Q U E R Y UL_ C O L U M N
     ;
-    
-QUERY_WITH_CIPHER_COLUMN
-    : Q U E R Y UL_ W I T H UL_ C I P H E R UL_ C O L U M N
+
+LIKE_QUERY
+    : L I K E UL_ Q U E R Y
     ;
-    
+
+LIKE_QUERY_COLUMN
+    : L I K E UL_ Q U E R Y UL_ C O L U M N
+    ;
+
 TRUE
     : T R U E
     ;
-    
+
 FALSE
     : F A L S E
-    ;    
-
-DATA_TYPE
-    : D A T A UL_ T Y P E
-    ;
-    
-PLAIN_DATA_TYPE
-    : P L A I N UL_ D A T A UL_ T Y P E
     ;
 
-CIPHER_DATA_TYPE
-    : C I P H E R UL_ D A T A UL_ T Y P E
-    ;
-
-ASSISTED_QUERY_DATA_TYPE
-    : A S S I S T E D UL_ Q U E R Y UL_ D A T A UL_ T Y P E
-    ;
-
-IF  
+IF
     : I F
     ;
-    
+
 EXISTS
     : E X I S T S
     ;
 
 COUNT
     : C O U N T
+    ;
+
+MD5
+    : M D [5]
+    ;
+
+AES
+    : A E S
+    ;
+
+NOT
+    : N O T
+    ;
+
+ALGORITHM
+    : A L G O R I T H M 
+    ;
+
+PLUGINS
+    : P L U G I N S
     ;

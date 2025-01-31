@@ -17,29 +17,35 @@
 
 package org.apache.shardingsphere.data.pipeline.postgresql.datasource;
 
-import org.apache.shardingsphere.data.pipeline.spi.datasource.JdbcQueryPropertiesExtension;
-import org.apache.shardingsphere.data.pipeline.spi.datasource.JdbcQueryPropertiesExtensionFactory;
-import org.junit.Test;
+import org.apache.shardingsphere.data.pipeline.spi.JdbcQueryPropertiesExtension;
+import org.apache.shardingsphere.infra.database.core.type.DatabaseType;
+import org.apache.shardingsphere.infra.database.core.spi.DatabaseTypedSPILoader;
+import org.apache.shardingsphere.infra.spi.type.typed.TypedSPILoader;
+import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
+import java.util.Properties;
 
-import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public final class PostgreSQLJdbcQueryPropertiesExtensionTest {
+class PostgreSQLJdbcQueryPropertiesExtensionTest {
     
     @Test
-    public void assertExtendQueryProperties() {
-        Optional<JdbcQueryPropertiesExtension> extension = JdbcQueryPropertiesExtensionFactory.getInstance("PostgreSQL");
+    void assertExtendQueryProperties() {
+        Optional<JdbcQueryPropertiesExtension> extension = DatabaseTypedSPILoader.findService(JdbcQueryPropertiesExtension.class, TypedSPILoader.getService(DatabaseType.class, "PostgreSQL"));
         assertTrue(extension.isPresent());
         assertExtension(extension.get());
     }
     
     private void assertExtension(final JdbcQueryPropertiesExtension actual) {
         assertThat(actual, instanceOf(PostgreSQLJdbcQueryPropertiesExtension.class));
-        assertThat(actual.getType(), equalTo("PostgreSQL"));
-        assertTrue(actual.extendQueryProperties().isEmpty());
+        assertThat(actual.getType(), is(TypedSPILoader.getService(DatabaseType.class, "PostgreSQL")));
+        Properties props = new Properties();
+        actual.extendQueryProperties(props);
+        assertFalse(props.isEmpty());
     }
 }

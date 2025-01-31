@@ -1,6 +1,6 @@
 +++
 title = "SQL 解析"
-weight = 7
+weight = 8
 +++
 
 ## 背景信息
@@ -9,9 +9,7 @@ SQL 解析 YAML 配置方式具有可读性高，使用简单的特点。通过 
 ## 参数解释
 
 ```yaml
-rules:
-- !SQL_PARSER
-  sqlCommentParseEnabled: # 是否解析 SQL 注释
+sqlParser:
   sqlStatementCache: # SQL 语句本地缓存配置项
     initialCapacity: # 本地缓存初始容量
     maximumSize: # 本地缓存最大容量
@@ -28,18 +26,14 @@ rules:
 
 ## 配置示例
 ```yaml
-rules:
-  - !SQL_PARSER
-    sqlCommentParseEnabled: true
-    sqlStatementCache:
-      initialCapacity: 2000
-      maximumSize: 65535
-    parseTreeCache:
-      initialCapacity: 128
-      maximumSize: 1024
+sqlParser:
+  sqlStatementCache:
+    initialCapacity: 2000
+    maximumSize: 65535
+  parseTreeCache:
+    initialCapacity: 128
+    maximumSize: 1024
 ```
 
 ## 相关参考
 - [JAVA API：SQL 解析](/cn/user-manual/shardingsphere-jdbc/java-api/rules/sql-parser/)
-- [Spring Boot Starter：SQL 解析](/cn/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/sql-parser/)
-- [Spring 命名空间：SQl解析](/cn/user-manual/shardingsphere-jdbc/spring-namespace/rules/sql-parser/)

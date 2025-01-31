@@ -24,11 +24,8 @@ execute
     | alterReadwriteSplittingRule
     | dropReadwriteSplittingRule
     | showReadwriteSplittingRules
-    | setReadwriteSplittingHintSource
-    | showReadwriteSplittingHintStatus
-    | clearReadwriteSplittingHint
-    | alterReadwriteSplittingRuleStatus
+    | alterReadwriteSplittingStorageUnitStatus
     | showStatusFromReadwriteSplittingRules
     | countReadwriteSplittingRule
-    ) SEMI?
+    ) SEMI_? EOF
     ;

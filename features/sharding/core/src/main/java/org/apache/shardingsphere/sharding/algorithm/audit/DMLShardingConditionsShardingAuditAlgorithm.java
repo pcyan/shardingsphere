@@ -17,48 +17,35 @@
 
 package org.apache.shardingsphere.sharding.algorithm.audit;
 
-import lombok.Getter;
-import org.apache.shardingsphere.infra.binder.statement.SQLStatementContext;
-import org.apache.shardingsphere.infra.check.SQLCheckResult;
+import org.apache.shardingsphere.infra.annotation.HighFrequencyInvocation;
+import org.apache.shardingsphere.infra.binder.context.statement.SQLStatementContext;
+import org.apache.shardingsphere.infra.binder.context.type.TableAvailable;
+import org.apache.shardingsphere.infra.exception.core.ShardingSpherePreconditions;
 import org.apache.shardingsphere.infra.metadata.database.ShardingSphereDatabase;
-import org.apache.shardingsphere.infra.metadata.user.Grantee;
+import org.apache.shardingsphere.infra.metadata.database.rule.RuleMetaData;
+import org.apache.shardingsphere.sharding.exception.audit.DMLWithoutShardingKeyException;
 import org.apache.shardingsphere.sharding.route.engine.condition.engine.ShardingConditionEngine;
-import org.apache.shardingsphere.sharding.route.engine.condition.engine.ShardingConditionEngineFactory;
 import org.apache.shardingsphere.sharding.rule.ShardingRule;
 import org.apache.shardingsphere.sharding.spi.ShardingAuditAlgorithm;
-import org.apache.shardingsphere.sql.parser.sql.common.statement.dml.DMLStatement;
+import org.apache.shardingsphere.sql.parser.statement.core.statement.dml.DMLStatement;
 
 import java.util.List;
-import java.util.Properties;
 
 /**
  * DML sharding conditions sharding audit algorithm.
  */
+@HighFrequencyInvocation
 public final class DMLShardingConditionsShardingAuditAlgorithm implements ShardingAuditAlgorithm {
     
-    @Getter
-    private Properties props;
-    
     @Override
-    public void init(final Properties props) {
-        this.props = props;
-    }
-    
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    @Override
-    public SQLCheckResult check(final SQLStatementContext<?> sqlStatementContext, final List<Object> parameters, final Grantee grantee, final ShardingSphereDatabase database) {
+    public void check(final SQLStatementContext sqlStatementContext, final List<Object> params, final RuleMetaData globalRuleMetaData, final ShardingSphereDatabase database) {
         if (sqlStatementContext.getSqlStatement() instanceof DMLStatement) {
             ShardingRule rule = database.getRuleMetaData().getSingleRule(ShardingRule.class);
-            if (rule.isAllBroadcastTables(sqlStatementContext.getTablesContext().getTableNames())
-                    || sqlStatementContext.getTablesContext().getTableNames().stream().noneMatch(rule::isShardingTable)) {
-                return new SQLCheckResult(true, "");
-            }
-            ShardingConditionEngine shardingConditionEngine = ShardingConditionEngineFactory.createShardingConditionEngine(sqlStatementContext, database, rule);
-            if (shardingConditionEngine.createShardingConditions(sqlStatementContext, parameters).isEmpty()) {
-                return new SQLCheckResult(false, "Not allow DML operation without sharding conditions");
+            if (((TableAvailable) sqlStatementContext).getTablesContext().getTableNames().stream().anyMatch(rule::isShardingTable)) {
+                ShardingSpherePreconditions.checkNotEmpty(
+                        new ShardingConditionEngine(globalRuleMetaData, database, rule).createShardingConditions(sqlStatementContext, params), DMLWithoutShardingKeyException::new);
             }
         }
-        return new SQLCheckResult(true, "");
     }
     
     @Override

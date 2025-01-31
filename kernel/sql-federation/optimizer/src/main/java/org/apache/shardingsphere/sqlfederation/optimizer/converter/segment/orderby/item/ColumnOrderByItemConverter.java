@@ -17,29 +17,44 @@
 
 package org.apache.shardingsphere.sqlfederation.optimizer.converter.segment.orderby.item;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import org.apache.calcite.sql.SqlBasicCall;
 import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.SqlPostfixOperator;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.parser.SqlParserPos;
-import org.apache.shardingsphere.sqlfederation.optimizer.converter.segment.SQLSegmentConverter;
+import org.apache.shardingsphere.infra.database.core.metadata.database.enums.NullsOrderType;
+import org.apache.shardingsphere.sql.parser.statement.core.enums.OrderDirection;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.dml.order.item.ColumnOrderByItemSegment;
 import org.apache.shardingsphere.sqlfederation.optimizer.converter.segment.expression.impl.ColumnConverter;
-import org.apache.shardingsphere.sql.parser.sql.common.constant.OrderDirection;
-import org.apache.shardingsphere.sql.parser.sql.common.segment.dml.order.item.ColumnOrderByItemSegment;
 
 import java.util.Collections;
-import java.util.Objects;
 import java.util.Optional;
 
 /**
  *  Column of order by item converter. 
  */
-public final class ColumnOrderByItemConverter implements SQLSegmentConverter<ColumnOrderByItemSegment, SqlNode> {
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public final class ColumnOrderByItemConverter {
     
-    @Override
-    public Optional<SqlNode> convert(final ColumnOrderByItemSegment segment) {
-        Optional<SqlNode> result = new ColumnConverter().convert(segment.getColumn());
-        if (result.isPresent() && Objects.equals(OrderDirection.DESC, segment.getOrderDirection())) {
+    /**
+     * Convert column order by item segment to sql node.
+     *
+     * @param segment column order by item segment
+     * @return sql node
+     */
+    public static Optional<SqlNode> convert(final ColumnOrderByItemSegment segment) {
+        Optional<SqlNode> result = ColumnConverter.convert(segment.getColumn());
+        if (!result.isPresent()) {
+            return Optional.empty();
+        }
+        if (OrderDirection.DESC == segment.getOrderDirection()) {
             result = Optional.of(new SqlBasicCall(SqlStdOperatorTable.DESC, Collections.singletonList(result.get()), SqlParserPos.ZERO));
+        }
+        if (segment.getNullsOrderType().isPresent()) {
+            SqlPostfixOperator nullsOrderType = NullsOrderType.FIRST == segment.getNullsOrderType().get() ? SqlStdOperatorTable.NULLS_FIRST : SqlStdOperatorTable.NULLS_LAST;
+            result = Optional.of(new SqlBasicCall(nullsOrderType, Collections.singletonList(result.get()), SqlParserPos.ZERO));
         }
         return result;
     }

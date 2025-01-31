@@ -20,19 +20,21 @@ package org.apache.shardingsphere.infra.executor.sql.prepare;
 import com.google.common.collect.Lists;
 import org.apache.shardingsphere.infra.executor.kernel.model.ExecutionGroup;
 import org.apache.shardingsphere.infra.executor.kernel.model.ExecutionGroupContext;
+import org.apache.shardingsphere.infra.executor.kernel.model.ExecutionGroupReportContext;
 import org.apache.shardingsphere.infra.executor.sql.context.ExecutionUnit;
-import org.apache.shardingsphere.infra.executor.sql.context.SQLUnit;
 import org.apache.shardingsphere.infra.executor.sql.execute.engine.ConnectionMode;
 import org.apache.shardingsphere.infra.route.context.RouteContext;
 import org.apache.shardingsphere.infra.rule.ShardingSphereRule;
+import org.apache.shardingsphere.infra.spi.type.ordered.OrderedSPILoader;
 
 import java.sql.SQLException;
 import java.util.Collection;
-import java.util.LinkedHashMap;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.TreeMap;
 
 /**
  * Abstract execution prepare engine.
@@ -48,46 +50,50 @@ public abstract class AbstractExecutionPrepareEngine<T> implements ExecutionPrep
     
     protected AbstractExecutionPrepareEngine(final int maxConnectionsSizePerQuery, final Collection<ShardingSphereRule> rules) {
         this.maxConnectionsSizePerQuery = maxConnectionsSizePerQuery;
-        decorators = ExecutionPrepareDecoratorFactory.getInstance(rules);
+        decorators = OrderedSPILoader.getServices(ExecutionPrepareDecorator.class, rules);
     }
     
     @Override
-    public final ExecutionGroupContext<T> prepare(final RouteContext routeContext, final Collection<ExecutionUnit> executionUnits) throws SQLException {
-        Collection<ExecutionGroup<T>> result = new LinkedList<>();
-        for (Entry<String, List<SQLUnit>> entry : aggregateSQLUnitGroups(executionUnits).entrySet()) {
-            String dataSourceName = entry.getKey();
-            List<SQLUnit> sqlUnits = entry.getValue();
-            List<List<SQLUnit>> sqlUnitGroups = group(sqlUnits);
-            ConnectionMode connectionMode = maxConnectionsSizePerQuery < sqlUnits.size() ? ConnectionMode.CONNECTION_STRICTLY : ConnectionMode.MEMORY_STRICTLY;
-            result.addAll(group(dataSourceName, sqlUnitGroups, connectionMode));
-        }
-        return decorate(routeContext, result);
+    public final ExecutionGroupContext<T> prepare(final String databaseName, final RouteContext routeContext, final Collection<ExecutionUnit> executionUnits,
+                                                  final ExecutionGroupReportContext reportContext) throws SQLException {
+        return prepare(databaseName, routeContext, Collections.emptyMap(), executionUnits, reportContext);
     }
     
-    private List<List<SQLUnit>> group(final List<SQLUnit> sqlUnits) {
+    @Override
+    public final ExecutionGroupContext<T> prepare(final String databaseName, final RouteContext routeContext, final Map<String, Integer> connectionOffsets,
+                                                  final Collection<ExecutionUnit> executionUnits, final ExecutionGroupReportContext reportContext) throws SQLException {
+        Collection<ExecutionGroup<T>> result = new LinkedList<>();
+        for (Entry<String, List<ExecutionUnit>> entry : aggregateExecutionUnitGroups(executionUnits).entrySet()) {
+            String dataSourceName = entry.getKey();
+            List<List<ExecutionUnit>> executionUnitGroups = group(entry.getValue());
+            ConnectionMode connectionMode = maxConnectionsSizePerQuery < entry.getValue().size() ? ConnectionMode.CONNECTION_STRICTLY : ConnectionMode.MEMORY_STRICTLY;
+            result.addAll(group(databaseName, dataSourceName, connectionOffsets.getOrDefault(dataSourceName, 0), executionUnitGroups, connectionMode));
+        }
+        return decorate(routeContext, result, reportContext);
+    }
+    
+    private List<List<ExecutionUnit>> group(final List<ExecutionUnit> sqlUnits) {
         int desiredPartitionSize = Math.max(0 == sqlUnits.size() % maxConnectionsSizePerQuery ? sqlUnits.size() / maxConnectionsSizePerQuery : sqlUnits.size() / maxConnectionsSizePerQuery + 1, 1);
         return Lists.partition(sqlUnits, desiredPartitionSize);
     }
     
-    protected abstract List<ExecutionGroup<T>> group(String dataSourceName, List<List<SQLUnit>> sqlUnitGroups, ConnectionMode connectionMode) throws SQLException;
+    protected abstract List<ExecutionGroup<T>> group(String databaseName, String dataSourceName, int connectionOffset, List<List<ExecutionUnit>> executionUnitGroups,
+                                                     ConnectionMode connectionMode) throws SQLException;
     
-    private Map<String, List<SQLUnit>> aggregateSQLUnitGroups(final Collection<ExecutionUnit> executionUnits) {
-        Map<String, List<SQLUnit>> result = new LinkedHashMap<>(executionUnits.size(), 1);
+    private Map<String, List<ExecutionUnit>> aggregateExecutionUnitGroups(final Collection<ExecutionUnit> executionUnits) {
+        Map<String, List<ExecutionUnit>> result = new TreeMap<>();
         for (ExecutionUnit each : executionUnits) {
-            if (!result.containsKey(each.getDataSourceName())) {
-                result.put(each.getDataSourceName(), new LinkedList<>());
-            }
-            result.get(each.getDataSourceName()).add(each.getSqlUnit());
+            result.computeIfAbsent(each.getDataSourceName(), unused -> new LinkedList<>()).add(each);
         }
         return result;
     }
     
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private ExecutionGroupContext<T> decorate(final RouteContext routeContext, final Collection<ExecutionGroup<T>> executionGroups) {
+    private ExecutionGroupContext<T> decorate(final RouteContext routeContext, final Collection<ExecutionGroup<T>> executionGroups, final ExecutionGroupReportContext reportContext) {
         Collection<ExecutionGroup<T>> result = executionGroups;
         for (Entry<ShardingSphereRule, ExecutionPrepareDecorator> each : decorators.entrySet()) {
             result = each.getValue().decorate(routeContext, each.getKey(), result);
         }
-        return new ExecutionGroupContext(result);
+        return new ExecutionGroupContext(result, reportContext);
     }
 }

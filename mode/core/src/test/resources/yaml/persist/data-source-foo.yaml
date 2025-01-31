@@ -17,7 +17,9 @@
 
 foo_ds:
   password: root
-  dataSourceClassName: org.apache.shardingsphere.test.mock.MockedDataSource
+  closed: false
+  driverClassName: com.mysql.cj.jdbc.Driver
+  dataSourceClassName: org.apache.shardingsphere.test.fixture.jdbc.MockedDataSource
   connectionInitSqls:
 # No spaces after conversion
   - set names utf8mb4;

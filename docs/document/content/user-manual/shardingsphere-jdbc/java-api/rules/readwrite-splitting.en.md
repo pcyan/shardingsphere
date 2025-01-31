@@ -1,6 +1,6 @@
 +++
 title = "Readwrite-splitting"
-weight = 2
+weight = 3
 +++
 
 ## Background
@@ -11,48 +11,30 @@ The read/write splitting configured in Java API form can be easily applied to va
 
 ### Entry
 
-Class name: org.apache.shardingsphere.readwritesplitting.api.ReadwriteSplittingRuleConfiguration
+Class name: org.apache.shardingsphere.readwritesplitting.config.ReadwriteSplittingRuleConfiguration
 
 Configurable Properties:
 
 | *Name*            | *DataType*                                                  | *Description*                                                          |
-| ----------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------- |
+|-------------------|-------------------------------------------------------------|------------------------------------------------------------------------|
 | dataSources (+)   | Collection\<ReadwriteSplittingDataSourceRuleConfiguration\> | Data sources of write and reads                                        |
 | loadBalancers (*) | Map\<String, AlgorithmConfiguration\>                       | Load balance algorithm name and configurations of replica data sources |
 
 ### Primary-secondary Data Source Configuration
 
-Class name: org.apache.shardingsphere.readwritesplitting.api.rule.ReadwriteSplittingDataSourceRuleConfiguration
+Class name: org.apache.shardingsphere.readwritesplitting.config.rule.ReadwriteSplittingDataSourceGroupRuleConfiguration
 
 Configurable Properties:
 
-| *Name*               | *DataType* | *Description*                                  | *Default Value*                    |
-| -------------------- | ---------- | ---------------------------------------------- | ---------------------------------- |
-| name                 | String     | Readwrite-splitting data source name           | -                                  |
-| staticStrategy       | String     | Static Readwrite-splitting configuration       | -                                  |
-| dynamicStrategy      | Properties | Dynamic Readwrite-splitting configuration      | -                                  |
-| loadBalancerName (?) | String     | Load balance algorithm name of replica sources | Round robin load balance algorithm |
-
-Class name：org.apache.shardingsphere.readwritesplitting.api.strategy.StaticReadwriteSplittingStrategyConfiguration
-
-Configurable Properties:
-
-| *Name*              | *DataType*     | *Description*          |
-| ------------------- | -------------- | ---------------------- |
-| writeDataSourceName | String         | Write data source name |
-| readDataSourceNames | List\<String\> | Read data sources list |
-
-Class name：org.apache.shardingsphere.readwritesplitting.api.strategy.DynamicReadwriteSplittingStrategyConfiguration
-
-Configurable Properties:
-
-| *Name*                          | *DataType* | *Description*                                                                                               | *Default Value*    |
-| ------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------| -------------------|
-| autoAwareDataSourceName         | String     | Database discovery logic data source name                                                                   | -                  |
-| writeDataSourceQueryEnabled (?) | String     | All read data source are offline, write data source whether the data source is responsible for read traffic | true               |
+| *Name*                             | *DataType*                     | *Description*                                                                                                                                          | *Default Value*                    |
+|------------------------------------|--------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------|
+| name                               | String                         | Readwrite-splitting data source name                                                                                                                   | -                                  |
+| writeDataSourceName                | String                         | Write data source name                                                                                                                                 | -                                  |
+| readDataSourceNames                | List\<String\>                 | Read data sources list                                                                                                                                 | -                                  |
+| transactionalReadQueryStrategy (?) | TransactionalReadQueryStrategy | Routing strategy for read query within a transaction, values include: PRIMARY (to primary), FIXED (to fixed data source), DYNAMIC (to any data source) | DYNAMIC                            |
+| loadBalancerName (?)               | String                         | Load balance algorithm name of replica sources                                                                                                         | Round robin load balance algorithm |
 
 Please refer to [Built-in Load Balance Algorithm List](/en/user-manual/common-config/builtin-algorithm/load-balance) for details on algorithm types.
-Please refer to [Read-write splitting-Core features](/en/features/readwrite-splitting/) for more details about query consistent routing.
 
 ## Operating Procedures
 
@@ -65,8 +47,7 @@ Please refer to [Read-write splitting-Core features](/en/features/readwrite-spli
 ```java
 public DataSource getDataSource() throws SQLException {
         ReadwriteSplittingDataSourceRuleConfiguration dataSourceConfig = new ReadwriteSplittingDataSourceRuleConfiguration(
-                "demo_read_query_ds", new StaticReadwriteSplittingStrategyConfiguration("demo_write_ds",
-                Arrays.asList("demo_read_ds_0", "demo_read_ds_1")), null,"demo_weight_lb");
+                "demo_read_query_ds", "demo_write_ds", Arrays.asList("demo_read_ds_0", "demo_read_ds_1"), "demo_weight_lb");
         Properties algorithmProps = new Properties();
         algorithmProps.setProperty("demo_read_ds_0", "2");
         algorithmProps.setProperty("demo_read_ds_1", "1");
@@ -91,5 +72,3 @@ public DataSource getDataSource() throws SQLException {
 
 - [Read-write splitting-Core features](/en/features/readwrite-splitting/)
 - [YAML Configuration: read-write splitting](/en/user-manual/shardingsphere-jdbc/yaml-config/rules/readwrite-splitting/)
-- [Spring Boot Starter: read-write splitting](/en/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/readwrite-splitting/)
-- [Spring namespace: read-write splitting](/en/user-manual/shardingsphere-jdbc/spring-namespace/rules/readwrite-splitting/)

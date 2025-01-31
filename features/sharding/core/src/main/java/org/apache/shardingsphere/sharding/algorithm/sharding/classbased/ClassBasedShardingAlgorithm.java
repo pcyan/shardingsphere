@@ -17,8 +17,8 @@
 
 package org.apache.shardingsphere.sharding.algorithm.sharding.classbased;
 
-import com.google.common.base.Preconditions;
-import lombok.Getter;
+import org.apache.shardingsphere.infra.algorithm.core.exception.AlgorithmInitializationException;
+import org.apache.shardingsphere.infra.exception.core.ShardingSpherePreconditions;
 import org.apache.shardingsphere.sharding.api.sharding.complex.ComplexKeysShardingAlgorithm;
 import org.apache.shardingsphere.sharding.api.sharding.complex.ComplexKeysShardingValue;
 import org.apache.shardingsphere.sharding.api.sharding.hint.HintShardingAlgorithm;
@@ -27,6 +27,7 @@ import org.apache.shardingsphere.sharding.api.sharding.standard.PreciseShardingV
 import org.apache.shardingsphere.sharding.api.sharding.standard.RangeShardingValue;
 import org.apache.shardingsphere.sharding.api.sharding.standard.StandardShardingAlgorithm;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Properties;
 
@@ -40,9 +41,6 @@ public final class ClassBasedShardingAlgorithm implements StandardShardingAlgori
     
     private static final String ALGORITHM_CLASS_NAME_KEY = "algorithmClassName";
     
-    @Getter
-    private Properties props;
-    
     private ClassBasedShardingAlgorithmStrategyType strategy;
     
     private String algorithmClassName;
@@ -55,7 +53,6 @@ public final class ClassBasedShardingAlgorithm implements StandardShardingAlgori
     
     @Override
     public void init(final Properties props) {
-        this.props = props;
         strategy = getStrategy(props);
         algorithmClassName = getAlgorithmClassName(props);
         initAlgorithmInstance(props);
@@ -63,13 +60,18 @@ public final class ClassBasedShardingAlgorithm implements StandardShardingAlgori
     
     private ClassBasedShardingAlgorithmStrategyType getStrategy(final Properties props) {
         String strategy = props.getProperty(STRATEGY_KEY);
-        Preconditions.checkNotNull(strategy, "Properties `%s` can not be null when uses class based sharding strategy.", STRATEGY_KEY);
-        return ClassBasedShardingAlgorithmStrategyType.valueOf(strategy.toUpperCase().trim());
+        ShardingSpherePreconditions.checkNotEmpty(strategy,
+                () -> new AlgorithmInitializationException(this, "Properties `%s` can not be null or empty when uses class based sharding strategy", STRATEGY_KEY));
+        String shardingAlgorithmStrategyType = strategy.toUpperCase().trim();
+        ShardingSpherePreconditions.checkState(
+                Arrays.stream(ClassBasedShardingAlgorithmStrategyType.values()).anyMatch(each -> each.name().equals(shardingAlgorithmStrategyType)),
+                () -> new AlgorithmInitializationException(this, "Unsupported sharding strategy `%s`", strategy));
+        return ClassBasedShardingAlgorithmStrategyType.valueOf(shardingAlgorithmStrategyType);
     }
     
     private String getAlgorithmClassName(final Properties props) {
         String result = props.getProperty(ALGORITHM_CLASS_NAME_KEY);
-        Preconditions.checkNotNull(result, "Properties `%s` can not be null when uses class based sharding strategy.", ALGORITHM_CLASS_NAME_KEY);
+        ShardingSpherePreconditions.checkNotEmpty(result, () -> new AlgorithmInitializationException(this, "Sharding algorithm class name can not be null or empty"));
         return result;
     }
     

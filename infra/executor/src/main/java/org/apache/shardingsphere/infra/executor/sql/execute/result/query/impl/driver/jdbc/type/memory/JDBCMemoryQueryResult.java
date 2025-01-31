@@ -17,9 +17,8 @@
 
 package org.apache.shardingsphere.infra.executor.sql.execute.result.query.impl.driver.jdbc.type.memory;
 
-import org.apache.shardingsphere.infra.database.type.DatabaseType;
+import org.apache.shardingsphere.infra.database.core.type.DatabaseType;
 import org.apache.shardingsphere.infra.executor.sql.execute.result.query.impl.driver.jdbc.metadata.JDBCQueryResultMetaData;
-import org.apache.shardingsphere.infra.executor.sql.execute.result.query.impl.driver.jdbc.type.memory.loader.DialectJDBCRowsLoaderFactory;
 import org.apache.shardingsphere.infra.executor.sql.execute.result.query.type.memory.AbstractMemoryQueryResult;
 
 import java.sql.ResultSet;
@@ -31,6 +30,6 @@ import java.sql.SQLException;
 public final class JDBCMemoryQueryResult extends AbstractMemoryQueryResult {
     
     public JDBCMemoryQueryResult(final ResultSet resultSet, final DatabaseType databaseType) throws SQLException {
-        super(new JDBCQueryResultMetaData(resultSet.getMetaData()), DialectJDBCRowsLoaderFactory.getInstance(databaseType).load(resultSet.getMetaData().getColumnCount(), resultSet));
+        super(new JDBCQueryResultMetaData(resultSet.getMetaData()), new QueryResultDataRowLoader(databaseType).load(resultSet.getMetaData().getColumnCount(), resultSet));
     }
 }

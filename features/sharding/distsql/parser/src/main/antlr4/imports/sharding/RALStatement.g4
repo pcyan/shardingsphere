@@ -19,26 +19,6 @@ grammar RALStatement;
 
 import BaseRule;
 
-setShardingHintDatabaseValue
-    : SET SHARDING HINT DATABASE_VALUE EQ shardingValue
-    ;
-
-addShardingHintDatabaseValue
-    : ADD SHARDING HINT DATABASE_VALUE tableName EQ shardingValue
-    ;
-
-addShardingHintTableValue
-    : ADD SHARDING HINT TABLE_VALUE tableName EQ shardingValue
-    ;
-
-showShardingHintStatus
-    : SHOW SHARDING HINT STATUS
-    ;
-
-clearShardingHint
-    : CLEAR SHARDING HINT
-    ;
-
-shardingValue
-    : INT | STRING
+showShardingAlgorithmPlugins
+    : SHOW SHARDING ALGORITHM PLUGINS
     ;

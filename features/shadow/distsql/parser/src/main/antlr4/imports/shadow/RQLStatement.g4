@@ -24,11 +24,15 @@ showShadowRules
     ;
 
 showShadowTableRules
-    : SHOW SHADOW TABLE RULES (FROM databaseName)?
+    : SHOW SHADOW TABLE (tableRule | RULES) (FROM databaseName)?
     ;
 
 showShadowAlgorithms
     : SHOW SHADOW ALGORITHMS (FROM databaseName)?
+    ;
+
+showDefaultShadowAlgorithm
+    : SHOW DEFAULT SHADOW ALGORITHM (FROM databaseName)?
     ;
 
 shadowRule
@@ -39,6 +43,10 @@ countShadowRule
     : COUNT SHADOW RULE (FROM databaseName)?
     ;
 
+tableRule
+    : RULE tableName
+    ;
+
 databaseName
-    : IDENTIFIER
+    : IDENTIFIER_
     ;

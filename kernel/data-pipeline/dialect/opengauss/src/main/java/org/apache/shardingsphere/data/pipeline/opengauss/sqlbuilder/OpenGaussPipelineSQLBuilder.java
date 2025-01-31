@@ -17,52 +17,84 @@
 
 package org.apache.shardingsphere.data.pipeline.opengauss.sqlbuilder;
 
-import org.apache.shardingsphere.data.pipeline.api.ingest.record.Column;
-import org.apache.shardingsphere.data.pipeline.api.ingest.record.DataRecord;
-import org.apache.shardingsphere.data.pipeline.api.metadata.LogicTableName;
-import org.apache.shardingsphere.data.pipeline.core.sqlbuilder.AbstractPipelineSQLBuilder;
+import org.apache.shardingsphere.data.pipeline.core.exception.job.CreateTableSQLGenerateException;
+import org.apache.shardingsphere.data.pipeline.core.ingest.record.DataRecord;
+import org.apache.shardingsphere.data.pipeline.core.sqlbuilder.segment.PipelineSQLSegmentBuilder;
+import org.apache.shardingsphere.data.pipeline.core.sqlbuilder.dialect.DialectPipelineSQLBuilder;
 
-import java.util.List;
-import java.util.Map;
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
  * Pipeline SQL builder of openGauss.
  */
-public final class OpenGaussPipelineSQLBuilder extends AbstractPipelineSQLBuilder {
+public final class OpenGaussPipelineSQLBuilder implements DialectPipelineSQLBuilder {
     
     @Override
     public Optional<String> buildCreateSchemaSQL(final String schemaName) {
-        return Optional.of(String.format("CREATE SCHEMA %s", quote(schemaName)));
+        return Optional.of(String.format("CREATE SCHEMA %s", schemaName));
     }
     
     @Override
-    public String buildInsertSQL(final String schemaName, final DataRecord dataRecord, final Map<LogicTableName, Set<String>> shardingColumnsMap) {
-        return super.buildInsertSQL(schemaName, dataRecord, shardingColumnsMap) + buildConflictSQL(dataRecord, shardingColumnsMap);
+    public Optional<String> buildInsertOnDuplicateClause(final DataRecord dataRecord) {
+        StringBuilder result = new StringBuilder("ON DUPLICATE KEY UPDATE ");
+        PipelineSQLSegmentBuilder sqlSegmentBuilder = new PipelineSQLSegmentBuilder(getType());
+        result.append(dataRecord.getColumns().stream()
+                .filter(each -> !each.isUniqueKey()).map(each -> sqlSegmentBuilder.getEscapedIdentifier(each.getName()) + "=EXCLUDED." + sqlSegmentBuilder.getEscapedIdentifier(each.getName()))
+                .collect(Collectors.joining(",")));
+        return Optional.of(result.toString());
     }
     
     @Override
-    public List<Column> extractUpdatedColumns(final DataRecord record, final Map<LogicTableName, Set<String>> shardingColumnsMap) {
-        return record.getColumns().stream().filter(each -> !(each.isUniqueKey() || isShardingColumn(shardingColumnsMap, record.getTableName(), each.getName()))).collect(Collectors.toList());
+    public String buildCheckEmptyTableSQL(final String qualifiedTableName) {
+        return String.format("SELECT * FROM %s LIMIT 1", qualifiedTableName);
     }
     
-    private String buildConflictSQL(final DataRecord dataRecord, final Map<LogicTableName, Set<String>> shardingColumnsMap) {
-        StringBuilder result = new StringBuilder(" ON DUPLICATE KEY UPDATE ");
-        for (int i = 0; i < dataRecord.getColumnCount(); i++) {
-            Column column = dataRecord.getColumn(i);
-            if (column.isUniqueKey() || isShardingColumn(shardingColumnsMap, dataRecord.getTableName(), column.getName())) {
-                continue;
+    @Override
+    public Optional<String> buildEstimatedCountSQL(final String catalogName, final String qualifiedTableName) {
+        return Optional.of(String.format("SELECT reltuples::integer FROM pg_class WHERE oid='%s'::regclass::oid;", qualifiedTableName));
+    }
+    
+    @Override
+    public Collection<String> buildCreateTableSQLs(final DataSource dataSource, final String schemaName, final String tableName) throws SQLException {
+        try (
+                Connection connection = dataSource.getConnection();
+                Statement statement = connection.createStatement();
+                ResultSet resultSet = statement.executeQuery(String.format("SELECT * FROM pg_get_tabledef('%s.%s')", schemaName, tableName))) {
+            if (resultSet.next()) {
+                // TODO use ";" to split is not always correct if return value's comments contains ";"
+                Collection<String> defSQLs = Arrays.asList(resultSet.getString("pg_get_tabledef").split(";"));
+                return defSQLs.stream().map(sql -> {
+                    String targetPrefix = "ALTER TABLE " + tableName;
+                    if (sql.trim().startsWith(targetPrefix)) {
+                        return sql.replaceFirst(targetPrefix, "ALTER TABLE " + schemaName + "." + tableName);
+                    }
+                    return sql;
+                }).collect(Collectors.toList());
             }
-            result.append(quote(column.getName())).append("=EXCLUDED.").append(quote(column.getName())).append(",");
         }
-        result.setLength(result.length() - 1);
-        return result.toString();
+        throw new CreateTableSQLGenerateException(tableName);
     }
     
     @Override
-    public String getType() {
+    public Optional<String> buildQueryCurrentPositionSQL() {
+        return Optional.of("SELECT * FROM pg_current_xlog_location()");
+    }
+    
+    @Override
+    public String wrapWithPageQuery(final String sql) {
+        return sql + " LIMIT ?";
+    }
+    
+    @Override
+    public String getDatabaseType() {
         return "openGauss";
     }
 }

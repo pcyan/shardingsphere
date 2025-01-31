@@ -26,18 +26,16 @@ import org.apache.shardingsphere.db.protocol.mysql.payload.MySQLPacketPayload;
 /**
  * OK packet protocol for MySQL.
  * 
- * @see <a href="https://dev.mysql.com/doc/internals/en/packet-OK_Packet.html">OK Packet</a>
+ * @see <a href="https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_basic_ok_packet.html">OK Packet</a>
  */
 @RequiredArgsConstructor
 @Getter
-public final class MySQLOKPacket implements MySQLPacket {
+public final class MySQLOKPacket extends MySQLPacket {
     
     /**
      * Header of OK packet.
      */
     public static final int HEADER = 0x00;
-    
-    private final int sequenceId;
     
     private final long affectedRows;
     
@@ -49,16 +47,15 @@ public final class MySQLOKPacket implements MySQLPacket {
     
     private final String info;
     
-    public MySQLOKPacket(final int sequenceId, final int statusFlag) {
-        this(sequenceId, 0L, 0L, statusFlag, 0, "");
+    public MySQLOKPacket(final int statusFlag) {
+        this(0L, 0L, statusFlag, 0, "");
     }
     
-    public MySQLOKPacket(final int sequenceId, final long affectedRows, final long lastInsertId, final int statusFlag) {
-        this(sequenceId, affectedRows, lastInsertId, statusFlag, 0, "");
+    public MySQLOKPacket(final long affectedRows, final long lastInsertId, final int statusFlag) {
+        this(affectedRows, lastInsertId, statusFlag, 0, "");
     }
     
     public MySQLOKPacket(final MySQLPacketPayload payload) {
-        sequenceId = payload.readInt1();
         Preconditions.checkArgument(HEADER == payload.readInt1(), "Header of MySQL OK packet must be `0x00`.");
         affectedRows = payload.readIntLenenc();
         lastInsertId = payload.readIntLenenc();
@@ -68,7 +65,7 @@ public final class MySQLOKPacket implements MySQLPacket {
     }
     
     @Override
-    public void write(final MySQLPacketPayload payload) {
+    protected void write(final MySQLPacketPayload payload) {
         payload.writeInt1(HEADER);
         payload.writeIntLenenc(affectedRows);
         payload.writeIntLenenc(lastInsertId);

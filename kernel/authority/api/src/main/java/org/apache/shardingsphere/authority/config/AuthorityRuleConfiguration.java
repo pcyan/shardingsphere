@@ -19,11 +19,11 @@ package org.apache.shardingsphere.authority.config;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import org.apache.shardingsphere.infra.config.algorithm.AlgorithmConfiguration;
+import org.apache.shardingsphere.infra.algorithm.core.config.AlgorithmConfiguration;
 import org.apache.shardingsphere.infra.config.rule.scope.GlobalRuleConfiguration;
-import org.apache.shardingsphere.infra.metadata.user.ShardingSphereUser;
 
 import java.util.Collection;
+import java.util.Map;
 
 /**
  * Authority rule configuration.
@@ -32,7 +32,11 @@ import java.util.Collection;
 @Getter
 public final class AuthorityRuleConfiguration implements GlobalRuleConfiguration {
     
-    private final Collection<ShardingSphereUser> users;
+    private final Collection<UserConfiguration> users;
     
-    private final AlgorithmConfiguration provider;
+    private final AlgorithmConfiguration privilegeProvider;
+    
+    private final Map<String, AlgorithmConfiguration> authenticators;
+    
+    private final String defaultAuthenticator;
 }

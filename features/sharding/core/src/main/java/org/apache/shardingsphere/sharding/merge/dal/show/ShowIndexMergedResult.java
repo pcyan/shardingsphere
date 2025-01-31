@@ -17,14 +17,14 @@
 
 package org.apache.shardingsphere.sharding.merge.dal.show;
 
-import org.apache.shardingsphere.infra.binder.statement.SQLStatementContext;
+import org.apache.shardingsphere.infra.binder.context.statement.SQLStatementContext;
 import org.apache.shardingsphere.infra.executor.sql.execute.result.query.QueryResult;
 import org.apache.shardingsphere.infra.merge.result.impl.memory.MemoryMergedResult;
 import org.apache.shardingsphere.infra.merge.result.impl.memory.MemoryQueryResultRow;
-import org.apache.shardingsphere.infra.metadata.database.schema.decorator.model.ShardingSphereSchema;
-import org.apache.shardingsphere.infra.metadata.database.schema.util.IndexMetaDataUtil;
+import org.apache.shardingsphere.infra.metadata.database.schema.model.ShardingSphereSchema;
+import org.apache.shardingsphere.infra.metadata.database.schema.util.IndexMetaDataUtils;
 import org.apache.shardingsphere.sharding.rule.ShardingRule;
-import org.apache.shardingsphere.sharding.rule.TableRule;
+import org.apache.shardingsphere.sharding.rule.ShardingTable;
 
 import java.sql.SQLException;
 import java.util.LinkedList;
@@ -37,22 +37,22 @@ import java.util.Optional;
 public final class ShowIndexMergedResult extends MemoryMergedResult<ShardingRule> {
     
     public ShowIndexMergedResult(final ShardingRule shardingRule,
-                                 final SQLStatementContext<?> sqlStatementContext, final ShardingSphereSchema schema, final List<QueryResult> queryResults) throws SQLException {
+                                 final SQLStatementContext sqlStatementContext, final ShardingSphereSchema schema, final List<QueryResult> queryResults) throws SQLException {
         super(shardingRule, schema, sqlStatementContext, queryResults);
     }
     
     @Override
     protected List<MemoryQueryResultRow> init(final ShardingRule shardingRule, final ShardingSphereSchema schema,
-                                              final SQLStatementContext<?> sqlStatementContext, final List<QueryResult> queryResults) throws SQLException {
+                                              final SQLStatementContext sqlStatementContext, final List<QueryResult> queryResults) throws SQLException {
         List<MemoryQueryResultRow> result = new LinkedList<>();
         for (QueryResult each : queryResults) {
             while (each.next()) {
                 MemoryQueryResultRow memoryResultSetRow = new MemoryQueryResultRow(each);
                 String actualTableName = memoryResultSetRow.getCell(1).toString();
                 String actualIndexName = memoryResultSetRow.getCell(3).toString();
-                Optional<TableRule> tableRule = shardingRule.findTableRuleByActualTable(actualTableName);
-                tableRule.ifPresent(optional -> memoryResultSetRow.setCell(1, optional.getLogicTable()));
-                memoryResultSetRow.setCell(3, IndexMetaDataUtil.getLogicIndexName(actualIndexName, actualTableName));
+                Optional<ShardingTable> shardingTable = shardingRule.findShardingTableByActualTable(actualTableName);
+                shardingTable.ifPresent(optional -> memoryResultSetRow.setCell(1, optional.getLogicTable()));
+                memoryResultSetRow.setCell(3, IndexMetaDataUtils.getLogicIndexName(actualIndexName, actualTableName));
                 result.add(memoryResultSetRow);
             }
         }

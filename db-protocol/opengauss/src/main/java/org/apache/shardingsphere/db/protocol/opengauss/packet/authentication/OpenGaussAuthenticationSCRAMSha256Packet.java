@@ -17,7 +17,7 @@
 
 package org.apache.shardingsphere.db.protocol.opengauss.packet.authentication;
 
-import lombok.RequiredArgsConstructor;
+import org.apache.shardingsphere.db.protocol.opengauss.constant.OpenGaussProtocolVersion;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.identifier.PostgreSQLIdentifierPacket;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.identifier.PostgreSQLIdentifierTag;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.identifier.PostgreSQLMessagePacketType;
@@ -26,26 +26,39 @@ import org.apache.shardingsphere.db.protocol.postgresql.payload.PostgreSQLPacket
 /**
  * Authentication request SCRAM SHA-256 for openGauss.
  */
-@RequiredArgsConstructor
-public final class OpenGaussAuthenticationSCRAMSha256Packet implements PostgreSQLIdentifierPacket {
+public final class OpenGaussAuthenticationSCRAMSha256Packet extends PostgreSQLIdentifierPacket {
     
     private static final int AUTH_REQ_SHA256 = 10;
     
     private static final int PASSWORD_STORED_METHOD_SHA256 = 2;
     
-    private final byte[] random64Code;
-    
-    private final byte[] token;
+    private final int version;
     
     private final int serverIteration;
     
+    private final OpenGaussAuthenticationHexData authHexData;
+    
+    private final String serverSignature;
+    
+    public OpenGaussAuthenticationSCRAMSha256Packet(final int version, final int serverIteration, final OpenGaussAuthenticationHexData authHexData, final String password) {
+        this.version = version;
+        this.serverIteration = serverIteration;
+        this.authHexData = authHexData;
+        serverSignature = version >= OpenGaussProtocolVersion.PROTOCOL_350.getVersion() ? "" : OpenGaussMacCalculator.requestServerMac(password, authHexData, serverIteration);
+    }
+    
     @Override
-    public void write(final PostgreSQLPacketPayload payload) {
+    protected void write(final PostgreSQLPacketPayload payload) {
         payload.writeInt4(AUTH_REQ_SHA256);
         payload.writeInt4(PASSWORD_STORED_METHOD_SHA256);
-        payload.writeBytes(random64Code);
-        payload.writeBytes(token);
-        payload.writeInt4(serverIteration);
+        payload.writeBytes(authHexData.getSalt().getBytes());
+        payload.writeBytes(authHexData.getNonce().getBytes());
+        if (version < OpenGaussProtocolVersion.PROTOCOL_350.getVersion()) {
+            payload.writeBytes(serverSignature.getBytes());
+        }
+        if (OpenGaussProtocolVersion.PROTOCOL_351.getVersion() == version) {
+            payload.writeInt4(serverIteration);
+        }
     }
     
     @Override

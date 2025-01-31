@@ -18,7 +18,7 @@
 package org.apache.shardingsphere.shadow.yaml.swapper.datasource;
 
 import org.apache.shardingsphere.infra.util.yaml.swapper.YamlConfigurationSwapper;
-import org.apache.shardingsphere.shadow.api.config.datasource.ShadowDataSourceConfiguration;
+import org.apache.shardingsphere.shadow.config.datasource.ShadowDataSourceConfiguration;
 import org.apache.shardingsphere.shadow.yaml.config.datasource.YamlShadowDataSourceConfiguration;
 
 /**
@@ -36,6 +36,6 @@ public final class YamlShadowDataSourceConfigurationSwapper implements YamlConfi
     
     @Override
     public ShadowDataSourceConfiguration swapToObject(final YamlShadowDataSourceConfiguration yamlConfig) {
-        return new ShadowDataSourceConfiguration(yamlConfig.getProductionDataSourceName(), yamlConfig.getShadowDataSourceName());
+        throw new UnsupportedOperationException();
     }
 }

@@ -20,61 +20,53 @@ grammar RDLStatement;
 import BaseRule;
 
 createReadwriteSplittingRule
-    : CREATE READWRITE_SPLITTING RULE readwriteSplittingRuleDefinition (COMMA readwriteSplittingRuleDefinition)*
+    : CREATE READWRITE_SPLITTING RULE ifNotExists? readwriteSplittingRuleDefinition (COMMA_ readwriteSplittingRuleDefinition)*
     ;
 
 alterReadwriteSplittingRule
-    : ALTER READWRITE_SPLITTING RULE readwriteSplittingRuleDefinition (COMMA readwriteSplittingRuleDefinition)*
+    : ALTER READWRITE_SPLITTING RULE readwriteSplittingRuleDefinition (COMMA_ readwriteSplittingRuleDefinition)*
     ;
 
 dropReadwriteSplittingRule
-    : DROP READWRITE_SPLITTING RULE ifExists? ruleName (COMMA ruleName)*
+    : DROP READWRITE_SPLITTING RULE ifExists? ruleName (COMMA_ ruleName)*
     ;
 
 readwriteSplittingRuleDefinition
-    : ruleName LP (staticReadwriteSplittingRuleDefinition | dynamicReadwriteSplittingRuleDefinition) (COMMA algorithmDefinition)? RP
+    : ruleName LP_ dataSourceDefinition (COMMA_ transactionalReadQueryStrategy)? (COMMA_ algorithmDefinition)? RP_
     ;
 
-staticReadwriteSplittingRuleDefinition
-    : WRITE_RESOURCE EQ writeResourceName COMMA READ_RESOURCES LP readResourceNames RP
+dataSourceDefinition
+    : writeStorageUnit COMMA_ readStorageUnits
     ;
 
-dynamicReadwriteSplittingRuleDefinition
-    : AUTO_AWARE_RESOURCE EQ resourceName (COMMA WRITE_DATA_SOURCE_QUERY_ENABLED EQ writeDataSourceQueryEnabled)?
+writeStorageUnit
+    : WRITE_STORAGE_UNIT EQ_ writeStorageUnitName
     ;
 
-ruleName
-    : IDENTIFIER
+readStorageUnits
+    : READ_STORAGE_UNITS LP_ readStorageUnitsNames RP_
     ;
 
-writeResourceName
-    : resourceName
+transactionalReadQueryStrategy
+    : TRANSACTIONAL_READ_QUERY_STRATEGY EQ_ transactionalReadQueryStrategyName
     ;
 
-readResourceNames
-    : resourceName (COMMA resourceName)*
+writeStorageUnitName
+    : storageUnitName
     ;
 
-algorithmDefinition
-    : TYPE LP NAME EQ algorithmName (COMMA PROPERTIES LP algorithmProperties? RP)? RP
+readStorageUnitsNames
+    : storageUnitName (COMMA_ storageUnitName)*
     ;
 
-algorithmName
-    : STRING
-    ;
-
-algorithmProperties
-    : algorithmProperty (COMMA algorithmProperty)*
-    ;
-
-algorithmProperty
-    : key=STRING EQ value=(NUMBER | INT | STRING)
+transactionalReadQueryStrategyName
+    : STRING_
     ;
 
 ifExists
     : IF EXISTS
     ;
 
-writeDataSourceQueryEnabled
-    : TRUE | FALSE
+ifNotExists
+    : IF NOT EXISTS
     ;

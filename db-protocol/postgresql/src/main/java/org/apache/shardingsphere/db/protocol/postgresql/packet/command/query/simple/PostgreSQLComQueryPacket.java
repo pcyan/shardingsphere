@@ -18,28 +18,38 @@
 package org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.simple;
 
 import lombok.Getter;
-import lombok.ToString;
+import org.apache.shardingsphere.db.protocol.packet.sql.SQLReceivedPacket;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.PostgreSQLCommandPacket;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.PostgreSQLCommandPacketType;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.identifier.PostgreSQLIdentifierTag;
 import org.apache.shardingsphere.db.protocol.postgresql.payload.PostgreSQLPacketPayload;
+import org.apache.shardingsphere.infra.hint.HintValueContext;
+import org.apache.shardingsphere.infra.hint.SQLHintUtils;
 
 /**
  * Command query packet for PostgreSQL.
  */
-@Getter
-@ToString
-public final class PostgreSQLComQueryPacket extends PostgreSQLCommandPacket {
+public final class PostgreSQLComQueryPacket extends PostgreSQLCommandPacket implements SQLReceivedPacket {
     
     private final String sql;
     
+    @Getter
+    private final HintValueContext hintValueContext;
+    
     public PostgreSQLComQueryPacket(final PostgreSQLPacketPayload payload) {
         payload.readInt4();
-        sql = payload.readStringNul();
+        String originSQL = payload.readStringNul();
+        hintValueContext = SQLHintUtils.extractHint(originSQL);
+        sql = SQLHintUtils.removeHint(originSQL);
     }
     
     @Override
-    public void write(final PostgreSQLPacketPayload payload) {
+    protected void write(final PostgreSQLPacketPayload payload) {
+    }
+    
+    @Override
+    public String getSQL() {
+        return sql;
     }
     
     @Override

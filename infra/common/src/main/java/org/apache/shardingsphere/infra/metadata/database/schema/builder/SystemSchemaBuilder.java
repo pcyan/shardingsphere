@@ -19,11 +19,15 @@ package org.apache.shardingsphere.infra.metadata.database.schema.builder;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import org.apache.shardingsphere.infra.database.type.DatabaseType;
-import org.apache.shardingsphere.infra.database.type.dialect.OpenGaussDatabaseType;
-import org.apache.shardingsphere.infra.database.type.dialect.PostgreSQLDatabaseType;
-import org.apache.shardingsphere.infra.metadata.database.schema.decorator.model.ShardingSphereSchema;
-import org.apache.shardingsphere.infra.metadata.database.schema.decorator.model.ShardingSphereTable;
+import org.apache.shardingsphere.infra.config.props.ConfigurationProperties;
+import org.apache.shardingsphere.infra.config.props.temporary.TemporaryConfigurationPropertyKey;
+import org.apache.shardingsphere.infra.database.core.metadata.database.DialectDatabaseMetaData;
+import org.apache.shardingsphere.infra.database.core.metadata.database.system.SystemDatabase;
+import org.apache.shardingsphere.infra.database.core.type.DatabaseType;
+import org.apache.shardingsphere.infra.database.core.type.DatabaseTypeRegistry;
+import org.apache.shardingsphere.infra.metadata.database.schema.manager.SystemSchemaManager;
+import org.apache.shardingsphere.infra.metadata.database.schema.model.ShardingSphereSchema;
+import org.apache.shardingsphere.infra.metadata.database.schema.model.ShardingSphereTable;
 import org.apache.shardingsphere.infra.yaml.schema.pojo.YamlShardingSphereTable;
 import org.apache.shardingsphere.infra.yaml.schema.swapper.YamlTableSwapper;
 import org.yaml.snakeyaml.Yaml;
@@ -34,6 +38,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * System schema builder.
@@ -43,40 +48,43 @@ public final class SystemSchemaBuilder {
     
     /**
      * Build system schema.
-     * 
+     *
      * @param databaseName database name
      * @param databaseType database type
+     * @param props configuration properties
      * @return ShardingSphere system schema map
      */
-    public static Map<String, ShardingSphereSchema> build(final String databaseName, final DatabaseType databaseType) {
-        Map<String, ShardingSphereSchema> result = new LinkedHashMap<>(databaseType.getSystemSchemas().size(), 1);
+    public static Map<String, ShardingSphereSchema> build(final String databaseName, final DatabaseType databaseType, final ConfigurationProperties props) {
+        SystemDatabase systemDatabase = new SystemDatabase(databaseType);
+        Map<String, ShardingSphereSchema> result = new LinkedHashMap<>(systemDatabase.getSystemSchemas().size(), 1F);
+        boolean isSystemSchemaMetaDataEnabled = isSystemSchemaMetaDataEnabled(props.getProps());
         YamlTableSwapper swapper = new YamlTableSwapper();
-        for (String each : getSystemSchemas(databaseName, databaseType)) {
-            result.put(each.toLowerCase(), createSchema(getSchemaStreams(each, databaseType), swapper));
+        for (String each : getSystemSchemas(databaseName, databaseType, systemDatabase)) {
+            result.put(each.toLowerCase(), createSchema(each, SystemSchemaManager.getAllInputStreams(databaseType.getType(), each), swapper, isSystemSchemaMetaDataEnabled));
         }
         return result;
     }
     
-    private static Collection<String> getSystemSchemas(final String originalDatabaseName, final DatabaseType databaseType) {
-        String databaseName = databaseType instanceof PostgreSQLDatabaseType || databaseType instanceof OpenGaussDatabaseType ? "postgres" : originalDatabaseName;
-        return databaseType.getSystemDatabaseSchemaMap().getOrDefault(databaseName, Collections.emptyList());
+    private static boolean isSystemSchemaMetaDataEnabled(final Properties props) {
+        TemporaryConfigurationPropertyKey configKey = TemporaryConfigurationPropertyKey.SYSTEM_SCHEMA_METADATA_ASSEMBLY_ENABLED;
+        return Boolean.parseBoolean(props.getOrDefault(configKey.getKey(), configKey.getDefaultValue()).toString());
     }
     
-    private static Collection<InputStream> getSchemaStreams(final String schemaName, final DatabaseType databaseType) {
-        SystemSchemaBuilderRule builderRule = SystemSchemaBuilderRule.valueOf(databaseType.getType(), schemaName);
-        Collection<InputStream> result = new LinkedList<>();
-        for (String each : builderRule.getTables()) {
-            result.add(SystemSchemaBuilder.class.getClassLoader().getResourceAsStream("schema/" + databaseType.getType().toLowerCase() + "/" + schemaName + "/" + each + ".yaml"));
-        }
-        return result;
+    private static Collection<String> getSystemSchemas(final String originalDatabaseName, final DatabaseType databaseType, final SystemDatabase systemDatabase) {
+        DialectDatabaseMetaData dialectDatabaseMetaData = new DatabaseTypeRegistry(databaseType).getDialectDatabaseMetaData();
+        String databaseName = dialectDatabaseMetaData.getDefaultSchema().isPresent() ? "postgres" : originalDatabaseName;
+        return systemDatabase.getSystemDatabaseSchemaMap().getOrDefault(databaseName, Collections.emptyList());
     }
     
-    private static ShardingSphereSchema createSchema(final Collection<InputStream> schemaStreams, final YamlTableSwapper swapper) {
-        Map<String, ShardingSphereTable> tables = new LinkedHashMap<>(schemaStreams.size(), 1);
+    private static ShardingSphereSchema createSchema(final String schemaName, final Collection<InputStream> schemaStreams, final YamlTableSwapper swapper,
+                                                     final boolean isSystemSchemaMetadataEnabled) {
+        Collection<ShardingSphereTable> tables = new LinkedList<>();
         for (InputStream each : schemaStreams) {
             YamlShardingSphereTable metaData = new Yaml().loadAs(each, YamlShardingSphereTable.class);
-            tables.put(metaData.getName(), swapper.swapToObject(metaData));
+            if (isSystemSchemaMetadataEnabled || KernelSupportedSystemTables.isSupportedSystemTable(schemaName, metaData.getName())) {
+                tables.add(swapper.swapToObject(metaData));
+            }
         }
-        return new ShardingSphereSchema(tables, Collections.emptyMap());
+        return new ShardingSphereSchema(schemaName, tables, Collections.emptyList());
     }
 }

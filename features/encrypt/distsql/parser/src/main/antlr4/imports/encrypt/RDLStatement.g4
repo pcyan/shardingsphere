@@ -20,89 +20,77 @@ grammar RDLStatement;
 import BaseRule;
 
 createEncryptRule
-    : CREATE ENCRYPT RULE encryptRuleDefinition (COMMA encryptRuleDefinition)*
+    : CREATE ENCRYPT RULE ifNotExists? encryptRuleDefinition (COMMA_ encryptRuleDefinition)*
     ;
 
 alterEncryptRule
-    : ALTER ENCRYPT RULE encryptRuleDefinition (COMMA encryptRuleDefinition)*
+    : ALTER ENCRYPT RULE encryptRuleDefinition (COMMA_ encryptRuleDefinition)*
     ;
 
 dropEncryptRule
-    : DROP ENCRYPT RULE ifExists? tableName (COMMA tableName)*
+    : DROP ENCRYPT RULE ifExists? tableName (COMMA_ tableName)*
     ;
 
 encryptRuleDefinition
-    : tableName LP (resourceDefinition COMMA)? COLUMNS LP encryptColumnDefinition (COMMA encryptColumnDefinition)* RP (COMMA QUERY_WITH_CIPHER_COLUMN EQ queryWithCipherColumn)? RP
+    : tableName encryptTableRuleDefinition
     ;
 
-resourceDefinition
-    : RESOURCE EQ resourceName 
-    ;
-
-resourceName
-    : IDENTIFIER
+encryptTableRuleDefinition
+    : LP_ COLUMNS LP_ encryptColumnDefinition (COMMA_ encryptColumnDefinition)* RP_ RP_
     ;
 
 encryptColumnDefinition
-    : LP columnDefinition (COMMA plainColumnDefinition)? COMMA cipherColumnDefinition (COMMA assistedQueryColumnDefinition)? COMMA algorithmDefinition (COMMA algorithmDefinition)? RP
+    : LP_ columnDefinition COMMA_ cipherColumnDefinition (COMMA_ assistedQueryColumnDefinition)? (COMMA_ likeQueryColumnDefinition)? COMMA_ encryptAlgorithm (COMMA_ assistedQueryAlgorithm)? (COMMA_ likeQueryAlgorithm)? RP_
     ;
 
 columnDefinition
-    : NAME EQ columnName (COMMA DATA_TYPE EQ dataType)?
+    : NAME EQ_ columnName
     ;
 
 columnName
-    : IDENTIFIER
-    ;
-
-dataType
-    : STRING 
-    ;
-
-plainColumnDefinition
-    : PLAIN EQ plainColumnName (COMMA PLAIN_DATA_TYPE EQ dataType)?
-    ;
-
-plainColumnName
-    : IDENTIFIER
+    : IDENTIFIER_
     ;
 
 cipherColumnDefinition
-    :  CIPHER EQ cipherColumnName (COMMA CIPHER_DATA_TYPE EQ dataType)?
+    :  CIPHER EQ_ cipherColumnName
     ;
 
 cipherColumnName
-    : IDENTIFIER
+    : IDENTIFIER_
     ;
 
 assistedQueryColumnDefinition
-    : ASSISTED_QUERY_COLUMN EQ assistedQueryColumnName (COMMA ASSISTED_QUERY_DATA_TYPE EQ dataType)?
+    : (ASSISTED_QUERY | ASSISTED_QUERY_COLUMN) EQ_ assistedQueryColumnName
     ;
 
 assistedQueryColumnName
-    : IDENTIFIER
+    : IDENTIFIER_
     ;
 
-algorithmDefinition
-    : TYPE LP NAME EQ algorithmName (COMMA PROPERTIES LP algorithmProperties? RP)? RP
+likeQueryColumnDefinition
+    : (LIKE_QUERY | LIKE_QUERY_COLUMN) EQ_ likeQueryColumnName
     ;
 
-algorithmName
-    : STRING
+likeQueryColumnName
+    : IDENTIFIER_
     ;
 
-algorithmProperties
-    : algorithmProperty (COMMA algorithmProperty)*
+encryptAlgorithm
+    : ENCRYPT_ALGORITHM LP_ algorithmDefinition RP_
     ;
 
-algorithmProperty
-    : key=(IDENTIFIER | STRING) EQ value=(NUMBER | INT | STRING)
+assistedQueryAlgorithm
+    : ASSISTED_QUERY_ALGORITHM LP_ algorithmDefinition RP_
     ;
-    
-queryWithCipherColumn
-    : TRUE | FALSE
+
+likeQueryAlgorithm
+    : LIKE_QUERY_ALGORITHM LP_ algorithmDefinition RP_
     ;
 
 ifExists
     : IF EXISTS
+    ;
+
+ifNotExists
+    : IF NOT EXISTS
     ;

@@ -18,12 +18,12 @@
 package org.apache.shardingsphere.infra.executor.kernel;
 
 import lombok.Getter;
+import org.apache.shardingsphere.infra.annotation.HighFrequencyInvocation;
+import org.apache.shardingsphere.infra.exception.generic.UnknownSQLException;
 import org.apache.shardingsphere.infra.executor.kernel.model.ExecutionGroup;
 import org.apache.shardingsphere.infra.executor.kernel.model.ExecutionGroupContext;
 import org.apache.shardingsphere.infra.executor.kernel.model.ExecutorCallback;
-import org.apache.shardingsphere.infra.executor.kernel.model.ExecutorDataMap;
 import org.apache.shardingsphere.infra.executor.kernel.thread.ExecutorServiceManager;
-import org.apache.shardingsphere.infra.util.exception.external.sql.type.generic.UnknownSQLException;
 
 import java.sql.SQLException;
 import java.util.Collection;
@@ -31,17 +31,15 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 /**
  * Executor engine.
  */
+@HighFrequencyInvocation
 @Getter
 public final class ExecutorEngine implements AutoCloseable {
-    
-    private static final int CPU_CORES = Runtime.getRuntime().availableProcessors();
     
     private final ExecutorServiceManager executorServiceManager;
     
@@ -57,42 +55,6 @@ public final class ExecutorEngine implements AutoCloseable {
      */
     public static ExecutorEngine createExecutorEngineWithSize(final int executorSize) {
         return new ExecutorEngine(executorSize);
-    }
-    
-    /**
-     * Create executor engine with CPU and resources.
-     * 
-     * @param resourceCount resource count
-     * @return created executor engine
-     */
-    public static ExecutorEngine createExecutorEngineWithCPUAndResources(final int resourceCount) {
-        int cpuThreadCount = CPU_CORES * 2 - 1;
-        int resourceThreadCount = Math.max(resourceCount, 1);
-        return new ExecutorEngine(Math.min(cpuThreadCount, resourceThreadCount));
-    }
-    
-    /**
-     * Create executor engine with CPU.
-     *
-     * @return created executor engine
-     */
-    public static ExecutorEngine createExecutorEngineWithCPU() {
-        int cpuThreadCount = CPU_CORES * 2 - 1;
-        return new ExecutorEngine(cpuThreadCount);
-    }
-    
-    /**
-     * Execute.
-     *
-     * @param executionGroupContext execution group context
-     * @param callback executor callback
-     * @param <I> type of input value
-     * @param <O> type of return value
-     * @return execute result
-     * @throws SQLException throw if execute failure
-     */
-    public <I, O> List<O> execute(final ExecutionGroupContext<I> executionGroupContext, final ExecutorCallback<I, O> callback) throws SQLException {
-        return execute(executionGroupContext, null, callback, false);
     }
     
     /**
@@ -112,40 +74,41 @@ public final class ExecutorEngine implements AutoCloseable {
         if (executionGroupContext.getInputGroups().isEmpty()) {
             return Collections.emptyList();
         }
-        return serial ? serialExecute(executionGroupContext.getInputGroups().iterator(), firstCallback, callback)
-                : parallelExecute(executionGroupContext.getInputGroups().iterator(), firstCallback, callback);
+        return serial ? serialExecute(executionGroupContext.getInputGroups().iterator(), executionGroupContext.getReportContext().getProcessId(), firstCallback, callback)
+                : parallelExecute(executionGroupContext.getInputGroups().iterator(), executionGroupContext.getReportContext().getProcessId(), firstCallback, callback);
     }
     
-    private <I, O> List<O> serialExecute(final Iterator<ExecutionGroup<I>> executionGroups, final ExecutorCallback<I, O> firstCallback, final ExecutorCallback<I, O> callback) throws SQLException {
+    private <I, O> List<O> serialExecute(final Iterator<ExecutionGroup<I>> executionGroups, final String processId, final ExecutorCallback<I, O> firstCallback,
+                                         final ExecutorCallback<I, O> callback) throws SQLException {
         ExecutionGroup<I> firstInputs = executionGroups.next();
-        List<O> result = new LinkedList<>(syncExecute(firstInputs, null == firstCallback ? callback : firstCallback));
+        List<O> result = new LinkedList<>(syncExecute(firstInputs, processId, null == firstCallback ? callback : firstCallback));
         while (executionGroups.hasNext()) {
-            result.addAll(syncExecute(executionGroups.next(), callback));
+            result.addAll(syncExecute(executionGroups.next(), processId, callback));
         }
         return result;
     }
     
-    private <I, O> List<O> parallelExecute(final Iterator<ExecutionGroup<I>> executionGroups, final ExecutorCallback<I, O> firstCallback, final ExecutorCallback<I, O> callback) throws SQLException {
+    private <I, O> List<O> parallelExecute(final Iterator<ExecutionGroup<I>> executionGroups, final String processId, final ExecutorCallback<I, O> firstCallback,
+                                           final ExecutorCallback<I, O> callback) throws SQLException {
         ExecutionGroup<I> firstInputs = executionGroups.next();
-        Collection<Future<Collection<O>>> restResultFutures = asyncExecute(executionGroups, callback);
-        return getGroupResults(syncExecute(firstInputs, null == firstCallback ? callback : firstCallback), restResultFutures);
+        Collection<Future<Collection<O>>> restResultFutures = asyncExecute(executionGroups, processId, callback);
+        return getGroupResults(syncExecute(firstInputs, processId, null == firstCallback ? callback : firstCallback), restResultFutures);
     }
     
-    private <I, O> Collection<O> syncExecute(final ExecutionGroup<I> executionGroup, final ExecutorCallback<I, O> callback) throws SQLException {
-        return callback.execute(executionGroup.getInputs(), true, ExecutorDataMap.getValue());
+    private <I, O> Collection<O> syncExecute(final ExecutionGroup<I> executionGroup, final String processId, final ExecutorCallback<I, O> callback) throws SQLException {
+        return callback.execute(executionGroup.getInputs(), true, processId);
     }
     
-    private <I, O> Collection<Future<Collection<O>>> asyncExecute(final Iterator<ExecutionGroup<I>> executionGroups, final ExecutorCallback<I, O> callback) {
+    private <I, O> Collection<Future<Collection<O>>> asyncExecute(final Iterator<ExecutionGroup<I>> executionGroups, final String processId, final ExecutorCallback<I, O> callback) {
         Collection<Future<Collection<O>>> result = new LinkedList<>();
         while (executionGroups.hasNext()) {
-            result.add(asyncExecute(executionGroups.next(), callback));
+            result.add(asyncExecute(executionGroups.next(), processId, callback));
         }
         return result;
     }
     
-    private <I, O> Future<Collection<O>> asyncExecute(final ExecutionGroup<I> executionGroup, final ExecutorCallback<I, O> callback) {
-        Map<String, Object> dataMap = ExecutorDataMap.getValue();
-        return executorServiceManager.getExecutorService().submit(() -> callback.execute(executionGroup.getInputs(), false, dataMap));
+    private <I, O> Future<Collection<O>> asyncExecute(final ExecutionGroup<I> executionGroup, final String processId, final ExecutorCallback<I, O> callback) {
+        return executorServiceManager.getExecutorService().submit(() -> callback.execute(executionGroup.getInputs(), false, processId));
     }
     
     private <O> List<O> getGroupResults(final Collection<O> firstResults, final Collection<Future<Collection<O>>> restFutures) throws SQLException {
@@ -153,7 +116,9 @@ public final class ExecutorEngine implements AutoCloseable {
         for (Future<Collection<O>> each : restFutures) {
             try {
                 result.addAll(each.get());
-            } catch (final InterruptedException | ExecutionException ex) {
+            } catch (final InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            } catch (final ExecutionException ex) {
                 return throwException(ex);
             }
         }

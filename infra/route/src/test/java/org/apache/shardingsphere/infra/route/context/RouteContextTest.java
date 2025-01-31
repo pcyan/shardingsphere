@@ -17,114 +17,114 @@
 
 package org.apache.shardingsphere.infra.route.context;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertFalse;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public final class RouteContextTest {
-    
-    private static final String DATASOURCE_NAME_0 = "ds0";
-    
-    private static final String DATASOURCE_NAME_1 = "ds1";
-    
-    private static final String LOGIC_TABLE = "table";
-    
-    private static final String ACTUAL_TABLE = "table_0";
-    
-    private RouteContext singleRouteContext;
+class RouteContextTest {
     
     private RouteContext multiRouteContext;
     
     private RouteContext notContainsTableShardingRouteContext;
     
-    @Before
-    public void setUp() {
-        singleRouteContext = new RouteContext();
+    @BeforeEach
+    void setUp() {
         multiRouteContext = new RouteContext();
+        multiRouteContext.getRouteUnits().addAll(Arrays.asList(createRouteUnit("foo_ds"), createRouteUnit("bar_ds")));
         notContainsTableShardingRouteContext = new RouteContext();
-        multiRouteContext.getRouteUnits().addAll(Arrays.asList(mockRouteUnit(DATASOURCE_NAME_0), mockRouteUnit(DATASOURCE_NAME_1)));
-        singleRouteContext.getRouteUnits().add(mockRouteUnit(DATASOURCE_NAME_0));
-        notContainsTableShardingRouteContext.getRouteUnits().addAll(Arrays.asList(mockDatabaseShardingOnlyRouteUnit(DATASOURCE_NAME_0), mockDatabaseShardingOnlyRouteUnit(DATASOURCE_NAME_1)));
+        notContainsTableShardingRouteContext.getRouteUnits().add(createDatabaseShardingOnlyRouteUnit());
     }
     
-    private RouteUnit mockDatabaseShardingOnlyRouteUnit(final String datasourceName) {
-        return new RouteUnit(new RouteMapper(datasourceName, datasourceName), Collections.singletonList(new RouteMapper(LOGIC_TABLE, LOGIC_TABLE)));
+    private RouteUnit createRouteUnit(final String datasourceName) {
+        return new RouteUnit(new RouteMapper(datasourceName, datasourceName), Collections.singleton(new RouteMapper("logic_tbl", "actual_tbl")));
     }
     
-    private RouteUnit mockRouteUnit(final String datasourceName) {
-        return new RouteUnit(new RouteMapper(datasourceName, datasourceName), Collections.singletonList(new RouteMapper(LOGIC_TABLE, ACTUAL_TABLE)));
+    private RouteUnit createDatabaseShardingOnlyRouteUnit() {
+        return new RouteUnit(new RouteMapper("foo_ds", "foo_ds"), Collections.singleton(new RouteMapper("logic_tbl", "logic_tbl")));
     }
     
     @Test
-    public void assertIsSingleRouting() {
-        assertTrue(singleRouteContext.isSingleRouting());
+    void assertIsNotSingleRouting() {
         assertFalse(multiRouteContext.isSingleRouting());
     }
     
     @Test
-    public void assertGetActualDataSourceNames() {
-        Collection<String> actual = singleRouteContext.getActualDataSourceNames();
-        assertThat(actual.size(), is(1));
-        assertThat(actual.iterator().next(), is(DATASOURCE_NAME_0));
-        actual = multiRouteContext.getActualDataSourceNames();
-        assertThat(actual.size(), is(2));
-        Iterator<String> iterator = actual.iterator();
-        assertThat(iterator.next(), is(DATASOURCE_NAME_0));
-        assertThat(iterator.next(), is(DATASOURCE_NAME_1));
+    void assertIsSingleRouting() {
+        assertTrue(notContainsTableShardingRouteContext.isSingleRouting());
     }
     
     @Test
-    public void assertGetActualTableNameGroups() {
-        List<Set<String>> actual = multiRouteContext.getActualTableNameGroups(DATASOURCE_NAME_1, new HashSet<>(Collections.singleton(LOGIC_TABLE)));
-        assertThat(actual.size(), is(1));
-        assertTrue(actual.get(0).contains(ACTUAL_TABLE));
+    void assertGetActualDataSourceNames() {
+        assertThat(multiRouteContext.getActualDataSourceNames(), is(new HashSet<>(Arrays.asList("foo_ds", "bar_ds"))));
     }
     
     @Test
-    public void assertGetDataSourceLogicTablesMap() {
-        List<String> dataSources = Arrays.asList(DATASOURCE_NAME_0, DATASOURCE_NAME_1);
+    void assertGetActualTableNameGroups() {
+        assertThat(multiRouteContext.getActualTableNameGroups("bar_ds", Collections.singleton("logic_tbl")), is(Collections.singletonList(Collections.singleton("actual_tbl"))));
+    }
+    
+    @Test
+    void assertGetDataSourceLogicTablesMap() {
+        List<String> dataSources = Arrays.asList("foo_ds", "bar_ds", "invalid_ds");
         Map<String, Set<String>> actual = multiRouteContext.getDataSourceLogicTablesMap(dataSources);
         assertThat(actual.size(), is(2));
-        assertThat(actual.get(DATASOURCE_NAME_0).size(), is(1));
-        assertThat(actual.get(DATASOURCE_NAME_0).iterator().next(), is(LOGIC_TABLE));
-        assertThat(actual.get(DATASOURCE_NAME_1).size(), is(1));
-        assertThat(actual.get(DATASOURCE_NAME_1).iterator().next(), is(LOGIC_TABLE));
+        assertThat(actual.get("foo_ds").size(), is(1));
+        assertThat(actual.get("foo_ds").iterator().next(), is("logic_tbl"));
+        assertThat(actual.get("bar_ds").size(), is(1));
+        assertThat(actual.get("bar_ds").iterator().next(), is("logic_tbl"));
     }
     
     @Test
-    public void assertFindTableMapper() {
-        Optional<RouteMapper> actual = multiRouteContext.findTableMapper(DATASOURCE_NAME_1, ACTUAL_TABLE);
+    void assertFindTableMapper() {
+        Optional<RouteMapper> actual = multiRouteContext.findTableMapper("foo_ds", "actual_tbl");
         assertTrue(actual.isPresent());
-        assertThat(actual.get(), is(new RouteMapper(LOGIC_TABLE, ACTUAL_TABLE)));
+        assertThat(actual.get(), is(new RouteMapper("logic_tbl", "actual_tbl")));
     }
     
     @Test
-    public void assertTableMapperNotFound() {
-        assertFalse(singleRouteContext.findTableMapper(DATASOURCE_NAME_1, ACTUAL_TABLE).isPresent());
+    void assertTableMapperNotFound() {
+        assertFalse(notContainsTableShardingRouteContext.findTableMapper("bar_ds", "actual_tbl").isPresent());
     }
     
     @Test
-    public void assertContainsTableShardingWhenContainsTableSharding() {
-        assertTrue(singleRouteContext.containsTableSharding());
+    void assertPutRouteUnitWithExistedDataSourceMapper() {
+        multiRouteContext.putRouteUnit(new RouteMapper("foo_ds", "foo_ds"), Collections.singleton(new RouteMapper("foo_tbl", "foo_tbl")));
+        assertThat(multiRouteContext.getRouteUnits(),
+                is(new LinkedHashSet<>(Arrays.asList(
+                        new RouteUnit(new RouteMapper("foo_ds", "foo_ds"), new LinkedHashSet<>(Arrays.asList(new RouteMapper("logic_tbl", "actual_tbl"), new RouteMapper("foo_tbl", "foo_tbl")))),
+                        new RouteUnit(new RouteMapper("bar_ds", "bar_ds"), Collections.singleton(new RouteMapper("logic_tbl", "actual_tbl")))))));
+    }
+    
+    @Test
+    void assertPutRouteUnitWithNewDataSourceMapper() {
+        multiRouteContext.putRouteUnit(new RouteMapper("new_ds", "new_ds"), Collections.singleton(new RouteMapper("new_tbl", "new_tbl")));
+        assertThat(multiRouteContext.getRouteUnits(),
+                is(new LinkedHashSet<>(Arrays.asList(
+                        new RouteUnit(new RouteMapper("foo_ds", "foo_ds"), Collections.singleton(new RouteMapper("logic_tbl", "actual_tbl"))),
+                        new RouteUnit(new RouteMapper("bar_ds", "bar_ds"), Collections.singleton(new RouteMapper("logic_tbl", "actual_tbl"))),
+                        new RouteUnit(new RouteMapper("new_ds", "new_ds"), Collections.singleton(new RouteMapper("new_tbl", "new_tbl")))))));
+    }
+    
+    @Test
+    void assertContainsTableShardingWhenContainsTableSharding() {
         assertTrue(multiRouteContext.containsTableSharding());
     }
     
     @Test
-    public void assertContainsTableShardingWhenNotContainsTableSharding() {
+    void assertContainsTableShardingWhenNotContainsTableSharding() {
         assertFalse(notContainsTableShardingRouteContext.containsTableSharding());
     }
 }

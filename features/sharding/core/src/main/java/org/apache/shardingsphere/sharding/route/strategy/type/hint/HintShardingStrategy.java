@@ -17,18 +17,19 @@
 
 package org.apache.shardingsphere.sharding.route.strategy.type.hint;
 
-import com.google.common.base.Preconditions;
+import com.cedarsoftware.util.CaseInsensitiveSet;
 import lombok.Getter;
 import org.apache.shardingsphere.infra.config.props.ConfigurationProperties;
 import org.apache.shardingsphere.infra.datanode.DataNodeInfo;
+import org.apache.shardingsphere.infra.exception.core.ShardingSpherePreconditions;
 import org.apache.shardingsphere.sharding.api.sharding.hint.HintShardingAlgorithm;
 import org.apache.shardingsphere.sharding.api.sharding.hint.HintShardingValue;
+import org.apache.shardingsphere.sharding.exception.metadata.MissingRequiredShardingConfigurationException;
 import org.apache.shardingsphere.sharding.route.engine.condition.value.ListShardingConditionValue;
 import org.apache.shardingsphere.sharding.route.engine.condition.value.ShardingConditionValue;
 import org.apache.shardingsphere.sharding.route.strategy.ShardingStrategy;
 
 import java.util.Collection;
-import java.util.TreeSet;
 
 /**
  * Hint sharding strategy.
@@ -41,8 +42,8 @@ public final class HintShardingStrategy implements ShardingStrategy {
     private final HintShardingAlgorithm<?> shardingAlgorithm;
     
     public HintShardingStrategy(final HintShardingAlgorithm<?> shardingAlgorithm) {
-        Preconditions.checkNotNull(shardingAlgorithm, "Sharding algorithm cannot be null.");
-        shardingColumns = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        ShardingSpherePreconditions.checkNotNull(shardingAlgorithm, () -> new MissingRequiredShardingConfigurationException("Hint sharding algorithm"));
+        shardingColumns = new CaseInsensitiveSet<>();
         this.shardingAlgorithm = shardingAlgorithm;
     }
     
@@ -53,8 +54,6 @@ public final class HintShardingStrategy implements ShardingStrategy {
         ListShardingConditionValue<?> shardingValue = (ListShardingConditionValue) shardingConditionValues.iterator().next();
         Collection<String> shardingResult = shardingAlgorithm.doSharding(availableTargetNames,
                 new HintShardingValue(shardingValue.getTableName(), shardingValue.getColumnName(), shardingValue.getValues()));
-        Collection<String> result = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-        result.addAll(shardingResult);
-        return result;
+        return new CaseInsensitiveSet<>(shardingResult);
     }
 }

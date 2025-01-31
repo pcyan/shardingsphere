@@ -17,48 +17,60 @@
 
 package org.apache.shardingsphere.sharding.merge.dql.groupby.aggregation;
 
-import org.apache.shardingsphere.sql.parser.sql.common.constant.AggregationType;
-import org.junit.Test;
+import org.apache.shardingsphere.sql.parser.statement.core.enums.AggregationType;
+import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public final class AggregationUnitFactoryTest {
+class AggregationUnitFactoryTest {
     
     @Test
-    public void assertCreateComparableAggregationUnit() {
-        assertThat(AggregationUnitFactory.create(AggregationType.MIN, false), instanceOf(ComparableAggregationUnit.class));
-        assertThat(AggregationUnitFactory.create(AggregationType.MAX, false), instanceOf(ComparableAggregationUnit.class));
+    void assertCreateComparableAggregationUnit() {
+        assertThat(AggregationUnitFactory.create(AggregationType.MIN, false, null), instanceOf(ComparableAggregationUnit.class));
+        assertThat(AggregationUnitFactory.create(AggregationType.MAX, false, null), instanceOf(ComparableAggregationUnit.class));
     }
     
     @Test
-    public void assertCreateAccumulationAggregationUnit() {
-        assertThat(AggregationUnitFactory.create(AggregationType.SUM, false), instanceOf(AccumulationAggregationUnit.class));
-        assertThat(AggregationUnitFactory.create(AggregationType.COUNT, false), instanceOf(AccumulationAggregationUnit.class));
+    void assertCreateAccumulationAggregationUnit() {
+        assertThat(AggregationUnitFactory.create(AggregationType.SUM, false, null), instanceOf(AccumulationAggregationUnit.class));
+        assertThat(AggregationUnitFactory.create(AggregationType.COUNT, false, null), instanceOf(AccumulationAggregationUnit.class));
     }
     
     @Test
-    public void assertCreateAverageAggregationUnit() {
-        assertThat(AggregationUnitFactory.create(AggregationType.AVG, false), instanceOf(AverageAggregationUnit.class));
+    void assertCreateAverageAggregationUnit() {
+        assertThat(AggregationUnitFactory.create(AggregationType.AVG, false, null), instanceOf(AverageAggregationUnit.class));
     }
     
     @Test
-    public void assertCreateDistinctSumAggregationUnit() {
-        assertThat(AggregationUnitFactory.create(AggregationType.SUM, true), instanceOf(DistinctSumAggregationUnit.class));
+    void assertCreateDistinctSumAggregationUnit() {
+        assertThat(AggregationUnitFactory.create(AggregationType.SUM, true, null), instanceOf(DistinctSumAggregationUnit.class));
     }
     
     @Test
-    public void assertCreateDistinctCountAggregationUnit() {
-        assertThat(AggregationUnitFactory.create(AggregationType.COUNT, true), instanceOf(DistinctCountAggregationUnit.class));
+    void assertCreateDistinctCountAggregationUnit() {
+        assertThat(AggregationUnitFactory.create(AggregationType.COUNT, true, null), instanceOf(DistinctCountAggregationUnit.class));
     }
     
     @Test
-    public void assertCreateDistinctAverageAggregationUnit() {
-        assertThat(AggregationUnitFactory.create(AggregationType.AVG, true), instanceOf(DistinctAverageAggregationUnit.class));
+    void assertCreateDistinctAverageAggregationUnit() {
+        assertThat(AggregationUnitFactory.create(AggregationType.AVG, true, null), instanceOf(DistinctAverageAggregationUnit.class));
     }
     
     @Test
-    public void assertCreateBitXorAggregationUnit() {
-        assertThat(AggregationUnitFactory.create(AggregationType.BIT_XOR, false), instanceOf(BitXorAggregationUnit.class));
+    void assertCreateBitXorAggregationUnit() {
+        assertThat(AggregationUnitFactory.create(AggregationType.BIT_XOR, false, null), instanceOf(BitXorAggregationUnit.class));
+    }
+    
+    @Test
+    void assertGroupConcatAggregationUnit() {
+        assertThat(AggregationUnitFactory.create(AggregationType.GROUP_CONCAT, false, null), instanceOf(GroupConcatAggregationUnit.class));
+        assertThat(AggregationUnitFactory.create(AggregationType.GROUP_CONCAT, false, " "), instanceOf(GroupConcatAggregationUnit.class));
+    }
+    
+    @Test
+    void assertDistinctGroupConcatAggregationUnit() {
+        assertThat(AggregationUnitFactory.create(AggregationType.GROUP_CONCAT, true, null), instanceOf(DistinctGroupConcatAggregationUnit.class));
+        assertThat(AggregationUnitFactory.create(AggregationType.GROUP_CONCAT, true, " "), instanceOf(DistinctGroupConcatAggregationUnit.class));
     }
 }

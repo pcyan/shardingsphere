@@ -17,18 +17,47 @@
 
 package org.apache.shardingsphere.sharding.yaml.swapper;
 
+import org.apache.shardingsphere.infra.yaml.config.pojo.rule.YamlRuleConfiguration;
+import org.apache.shardingsphere.sharding.api.config.ShardingRuleConfiguration;
 import org.apache.shardingsphere.sharding.yaml.config.YamlShardingRuleConfiguration;
-import org.junit.Test;
+import org.apache.shardingsphere.sharding.yaml.config.rule.YamlTableRuleConfiguration;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Optional;
 
-import static org.junit.Assert.assertNotNull;
-import static org.mockito.Mockito.mock;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public final class ShardingRuleConfigurationConverterTest {
+class ShardingRuleConfigurationConverterTest {
+    
+    private Collection<YamlRuleConfiguration> yamlRuleConfig;
+    
+    @BeforeEach
+    void setUp() {
+        YamlShardingRuleConfiguration yamlShardingRuleConfig = new YamlShardingRuleConfiguration();
+        YamlTableRuleConfiguration tableRuleConfig = new YamlTableRuleConfiguration();
+        tableRuleConfig.setActualDataNodes("ds_${0..1}.table_${0..2}");
+        yamlShardingRuleConfig.getTables().put("LOGIC_TABLE", tableRuleConfig);
+        yamlRuleConfig = Collections.singletonList(yamlShardingRuleConfig);
+    }
     
     @Test
-    public void assertFindAndConvertShardingRuleConfiguration() {
-        assertNotNull(ShardingRuleConfigurationConverter.findAndConvertShardingRuleConfiguration(Collections.singletonList(mock(YamlShardingRuleConfiguration.class))));
+    void assertFindAndConvertShardingRuleConfiguration() {
+        Optional<ShardingRuleConfiguration> actual = ShardingRuleConfigurationConverter.findAndConvertShardingRuleConfiguration(yamlRuleConfig);
+        assertTrue(actual.isPresent());
+        assertThat(actual.get().getTables().size(), is(1));
+        assertThat(actual.get().getTables().iterator().next().getLogicTable(), is("LOGIC_TABLE"));
+    }
+    
+    @Test
+    void assertFindYamlShardingRuleConfiguration() {
+        Optional<YamlShardingRuleConfiguration> actual = ShardingRuleConfigurationConverter.findYamlShardingRuleConfiguration(yamlRuleConfig);
+        assertTrue(actual.isPresent());
+        assertThat(actual.get().getTables().size(), is(1));
+        assertTrue(actual.get().getTables().containsKey("LOGIC_TABLE"));
     }
 }

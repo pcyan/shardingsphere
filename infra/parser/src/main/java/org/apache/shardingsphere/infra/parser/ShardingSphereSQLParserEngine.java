@@ -19,25 +19,26 @@ package org.apache.shardingsphere.infra.parser;
 
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.shardingsphere.distsql.parser.engine.api.DistSQLStatementParserEngine;
+import org.apache.shardingsphere.infra.database.core.type.DatabaseType;
+import org.apache.shardingsphere.infra.exception.dialect.exception.syntax.sql.DialectSQLParsingException;
 import org.apache.shardingsphere.infra.parser.sql.SQLStatementParserEngine;
 import org.apache.shardingsphere.infra.parser.sql.SQLStatementParserEngineFactory;
 import org.apache.shardingsphere.sql.parser.api.CacheOption;
 import org.apache.shardingsphere.sql.parser.exception.SQLParsingException;
-import org.apache.shardingsphere.sql.parser.sql.common.statement.SQLStatement;
-import org.apache.shardingsphere.sql.parser.sql.common.util.SQLUtil;
+import org.apache.shardingsphere.sql.parser.statement.core.statement.SQLStatement;
+import org.apache.shardingsphere.sql.parser.statement.core.util.SQLUtils;
 
 /**
  * ShardingSphere SQL parser engine.
  */
-public final class ShardingSphereSQLParserEngine {
+public final class ShardingSphereSQLParserEngine implements SQLParserEngine {
     
     private final SQLStatementParserEngine sqlStatementParserEngine;
     
     private final DistSQLStatementParserEngine distSQLStatementParserEngine;
     
-    public ShardingSphereSQLParserEngine(final String databaseType, final CacheOption sqlStatementCacheOption, final CacheOption parseTreeCacheOption, final boolean isParseComment) {
-        sqlStatementParserEngine = SQLStatementParserEngineFactory.getSQLStatementParserEngine(
-                databaseType, sqlStatementCacheOption, parseTreeCacheOption, isParseComment);
+    public ShardingSphereSQLParserEngine(final DatabaseType databaseType, final CacheOption sqlStatementCacheOption, final CacheOption parseTreeCacheOption) {
+        sqlStatementParserEngine = SQLStatementParserEngineFactory.getSQLStatementParserEngine(databaseType, sqlStatementCacheOption, parseTreeCacheOption);
         distSQLStatementParserEngine = new DistSQLStatementParserEngine();
     }
     
@@ -46,23 +47,23 @@ public final class ShardingSphereSQLParserEngine {
      *
      * @see <a href="https://github.com/apache/skywalking/blob/master/docs/en/guides/Java-Plugin-Development-Guide.md#user-content-plugin-development-guide">Plugin Development Guide</a>
      */
-    /**
-     * Parse to SQL statement.
-     *
-     * @param sql SQL to be parsed
-     * @param useCache whether use cache
-     * @return SQL statement
-     */
+    @Override
     public SQLStatement parse(final String sql, final boolean useCache) {
         try {
             return sqlStatementParserEngine.parse(sql, useCache);
         } catch (final SQLParsingException | ParseCancellationException originalEx) {
             try {
-                String trimSQL = SQLUtil.trimComment(sql);
+                String trimSQL = SQLUtils.trimComment(sql);
                 return distSQLStatementParserEngine.parse(trimSQL);
             } catch (final SQLParsingException ignored) {
-                throw originalEx;
+                throw getException(originalEx);
             }
         }
+    }
+    
+    private RuntimeException getException(final RuntimeException originalEx) {
+        return originalEx instanceof SQLParsingException
+                ? new DialectSQLParsingException(originalEx.getMessage(), ((SQLParsingException) originalEx).getSymbol(), ((SQLParsingException) originalEx).getLine())
+                : originalEx;
     }
 }

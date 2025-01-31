@@ -19,6 +19,8 @@ package org.apache.shardingsphere.transaction.core;
 
 import com.google.common.base.Preconditions;
 import lombok.Getter;
+import org.apache.shardingsphere.infra.exception.core.ShardingSpherePreconditions;
+import org.apache.shardingsphere.transaction.exception.ResourceNameLengthExceededException;
 
 import javax.sql.DataSource;
 
@@ -28,6 +30,8 @@ import javax.sql.DataSource;
 @Getter
 public final class ResourceDataSource {
     
+    private static final int MAX_RESOURCE_NAME_LENGTH = 45;
+    
     private final String originalName;
     
     private final String uniqueResourceName;
@@ -36,9 +40,10 @@ public final class ResourceDataSource {
     
     public ResourceDataSource(final String originalName, final DataSource dataSource) {
         String[] databaseAndDataSourceName = originalName.split("\\.");
-        Preconditions.checkState(2 == databaseAndDataSourceName.length, String.format("Database and data source name must be provided,`%s`.", originalName));
+        Preconditions.checkState(2 == databaseAndDataSourceName.length, "Database and data source name must be provided together by `%s`.", originalName);
         this.originalName = originalName;
         this.dataSource = dataSource;
-        this.uniqueResourceName = ResourceIDGenerator.getInstance().nextId() + databaseAndDataSourceName[1];
+        uniqueResourceName = ResourceIdGenerator.getInstance().nextId() + databaseAndDataSourceName[1];
+        ShardingSpherePreconditions.checkState(uniqueResourceName.getBytes().length <= MAX_RESOURCE_NAME_LENGTH, () -> new ResourceNameLengthExceededException(uniqueResourceName));
     }
 }

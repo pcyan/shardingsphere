@@ -17,10 +17,9 @@
 
 package org.apache.shardingsphere.infra.executor.sql.hook;
 
-import org.apache.shardingsphere.infra.database.metadata.DataSourceMetaData;
+import org.apache.shardingsphere.infra.database.core.connector.ConnectionProperties;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * SQL Execution hook.
@@ -29,15 +28,14 @@ public interface SQLExecutionHook {
     
     /**
      * Handle when SQL execution started.
-     * 
+     *
      * @param dataSourceName data source name
      * @param sql SQL
-     * @param parameters parameters of SQL
-     * @param dataSourceMetaData data source meta data
+     * @param params SQL parameters
+     * @param connectionProps connection properties
      * @param isTrunkThread is execution in trunk thread
-     * @param shardingExecuteDataMap sharding execute data map
      */
-    void start(String dataSourceName, String sql, List<Object> parameters, DataSourceMetaData dataSourceMetaData, boolean isTrunkThread, Map<String, Object> shardingExecuteDataMap);
+    void start(String dataSourceName, String sql, List<Object> params, ConnectionProperties connectionProps, boolean isTrunkThread);
     
     /**
      * Handle when SQL execution finished success.

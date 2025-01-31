@@ -17,32 +17,36 @@
 
 package org.apache.shardingsphere.transaction.core;
 
-import org.apache.shardingsphere.test.mock.MockedDataSource;
-import org.junit.Test;
+import org.apache.shardingsphere.test.fixture.jdbc.MockedDataSource;
+import org.apache.shardingsphere.transaction.exception.ResourceNameLengthExceededException;
+import org.junit.jupiter.api.Test;
+
+import java.util.regex.Pattern;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.hamcrest.Matchers.matchesPattern;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public final class ResourceDataSourceTest {
-    
-    private static final String DATABASE_NAME = "sharding_db";
-    
-    private static final String DATA_SOURCE_NAME = "fooDataSource";
+class ResourceDataSourceTest {
     
     @Test
-    public void assertNewInstance() {
-        String originalName = DATABASE_NAME + "." + DATA_SOURCE_NAME;
+    void assertNewInstance() {
+        String originalName = "foo_db.foo_ds";
         ResourceDataSource actual = new ResourceDataSource(originalName, new MockedDataSource());
         assertThat(actual.getOriginalName(), is(originalName));
         assertThat(actual.getDataSource(), instanceOf(MockedDataSource.class));
-        assertTrue(actual.getUniqueResourceName().startsWith("resource"));
-        assertTrue(actual.getUniqueResourceName().endsWith(DATA_SOURCE_NAME));
+        assertThat(actual.getUniqueResourceName(), matchesPattern(Pattern.compile("\\d+-foo_ds")));
     }
     
-    @Test(expected = IllegalStateException.class)
-    public void assertDataSourceNameOnlyFailure() {
-        new ResourceDataSource(DATA_SOURCE_NAME, new MockedDataSource());
+    @Test
+    void assertNewInstanceFailureWithInvalidFormat() {
+        assertThrows(IllegalStateException.class, () -> new ResourceDataSource("invalid", new MockedDataSource()));
+    }
+    
+    @Test
+    void assertNewInstanceFailureWithTooLongUniqueResourceName() {
+        assertThrows(ResourceNameLengthExceededException.class, () -> new ResourceDataSource("foo_db.foo_ds_00000000000000000000000000000000000000000000000000", new MockedDataSource()));
     }
 }

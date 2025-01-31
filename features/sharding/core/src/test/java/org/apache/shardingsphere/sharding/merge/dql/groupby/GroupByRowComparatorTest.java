@@ -17,24 +17,24 @@
 
 package org.apache.shardingsphere.sharding.merge.dql.groupby;
 
-import org.apache.shardingsphere.infra.binder.statement.dml.SelectStatementContext;
-import org.apache.shardingsphere.infra.database.DefaultDatabase;
+import org.apache.shardingsphere.infra.binder.context.statement.dml.SelectStatementContext;
+import org.apache.shardingsphere.infra.database.core.metadata.database.enums.NullsOrderType;
 import org.apache.shardingsphere.infra.executor.sql.execute.result.query.QueryResult;
 import org.apache.shardingsphere.infra.merge.result.impl.memory.MemoryQueryResultRow;
+import org.apache.shardingsphere.infra.metadata.ShardingSphereMetaData;
 import org.apache.shardingsphere.infra.metadata.database.ShardingSphereDatabase;
-import org.apache.shardingsphere.infra.metadata.database.schema.decorator.model.ShardingSphereSchema;
-import org.apache.shardingsphere.sql.parser.sql.common.constant.OrderDirection;
-import org.apache.shardingsphere.sql.parser.sql.common.segment.dml.item.ProjectionsSegment;
-import org.apache.shardingsphere.sql.parser.sql.common.segment.dml.order.GroupBySegment;
-import org.apache.shardingsphere.sql.parser.sql.common.segment.dml.order.OrderBySegment;
-import org.apache.shardingsphere.sql.parser.sql.common.segment.dml.order.item.IndexOrderByItemSegment;
-import org.apache.shardingsphere.sql.parser.sql.common.statement.dml.SelectStatement;
-import org.apache.shardingsphere.sql.parser.sql.dialect.statement.mysql.dml.MySQLSelectStatement;
-import org.apache.shardingsphere.sql.parser.sql.dialect.statement.oracle.dml.OracleSelectStatement;
-import org.apache.shardingsphere.sql.parser.sql.dialect.statement.postgresql.dml.PostgreSQLSelectStatement;
-import org.apache.shardingsphere.sql.parser.sql.dialect.statement.sql92.dml.SQL92SelectStatement;
-import org.apache.shardingsphere.sql.parser.sql.dialect.statement.sqlserver.dml.SQLServerSelectStatement;
-import org.junit.Test;
+import org.apache.shardingsphere.sql.parser.statement.core.enums.OrderDirection;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.dml.item.ProjectionsSegment;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.dml.order.GroupBySegment;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.dml.order.OrderBySegment;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.dml.order.item.IndexOrderByItemSegment;
+import org.apache.shardingsphere.sql.parser.statement.core.statement.dml.SelectStatement;
+import org.apache.shardingsphere.sql.parser.statement.mysql.dml.MySQLSelectStatement;
+import org.apache.shardingsphere.sql.parser.statement.oracle.dml.OracleSelectStatement;
+import org.apache.shardingsphere.sql.parser.statement.postgresql.dml.PostgreSQLSelectStatement;
+import org.apache.shardingsphere.sql.parser.statement.sql92.dml.SQL92SelectStatement;
+import org.apache.shardingsphere.sql.parser.statement.sqlserver.dml.SQLServerSelectStatement;
+import org.junit.jupiter.api.Test;
 
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -45,52 +45,52 @@ import java.util.List;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public final class GroupByRowComparatorTest {
+class GroupByRowComparatorTest {
     
     private final List<Boolean> caseSensitives = Arrays.asList(false, false, false);
     
     @Test
-    public void assertCompareToForAscWithOrderByItemsForMySQL() throws SQLException {
+    void assertCompareToForAscWithOrderByItemsForMySQL() throws SQLException {
         assertCompareToForAscWithOrderByItems(new MySQLSelectStatement());
     }
     
     @Test
-    public void assertCompareToForAscWithOrderByItemsForOracle() throws SQLException {
+    void assertCompareToForAscWithOrderByItemsForOracle() throws SQLException {
         assertCompareToForAscWithOrderByItems(new OracleSelectStatement());
     }
     
     @Test
-    public void assertCompareToForAscWithOrderByItemsForPostgreSQL() throws SQLException {
+    void assertCompareToForAscWithOrderByItemsForPostgreSQL() throws SQLException {
         assertCompareToForAscWithOrderByItems(new PostgreSQLSelectStatement());
     }
     
     @Test
-    public void assertCompareToForAscWithOrderByItemsForSQL92() throws SQLException {
+    void assertCompareToForAscWithOrderByItemsForSQL92() throws SQLException {
         assertCompareToForAscWithOrderByItems(new SQL92SelectStatement());
     }
     
     @Test
-    public void assertCompareToForAscWithOrderByItemsForSQLServer() throws SQLException {
+    void assertCompareToForAscWithOrderByItemsForSQLServer() throws SQLException {
         assertCompareToForAscWithOrderByItems(new SQLServerSelectStatement());
     }
     
     private void assertCompareToForAscWithOrderByItems(final SelectStatement selectStatement) throws SQLException {
         ShardingSphereDatabase database = mock(ShardingSphereDatabase.class, RETURNS_DEEP_STUBS);
-        when(database.getSchema(DefaultDatabase.LOGIC_NAME)).thenReturn(mock(ShardingSphereSchema.class));
+        when(database.getName()).thenReturn("foo_db");
         selectStatement.setGroupBy(new GroupBySegment(0, 0, Arrays.asList(
-                new IndexOrderByItemSegment(0, 0, 1, OrderDirection.DESC, OrderDirection.ASC),
-                new IndexOrderByItemSegment(0, 0, 2, OrderDirection.DESC, OrderDirection.ASC))));
+                new IndexOrderByItemSegment(0, 0, 1, OrderDirection.DESC, NullsOrderType.FIRST),
+                new IndexOrderByItemSegment(0, 0, 2, OrderDirection.DESC, NullsOrderType.FIRST))));
         selectStatement.setOrderBy(new OrderBySegment(0, 0, Arrays.asList(
-                new IndexOrderByItemSegment(0, 0, 1, OrderDirection.ASC, OrderDirection.ASC),
-                new IndexOrderByItemSegment(0, 0, 2, OrderDirection.ASC, OrderDirection.ASC))));
+                new IndexOrderByItemSegment(0, 0, 1, OrderDirection.ASC, NullsOrderType.FIRST),
+                new IndexOrderByItemSegment(0, 0, 2, OrderDirection.ASC, NullsOrderType.FIRST))));
         selectStatement.setProjections(new ProjectionsSegment(0, 0));
-        SelectStatementContext selectStatementContext = new SelectStatementContext(Collections.singletonMap(DefaultDatabase.LOGIC_NAME, database), Collections.emptyList(),
-                selectStatement, DefaultDatabase.LOGIC_NAME);
+        SelectStatementContext selectStatementContext = new SelectStatementContext(createShardingSphereMetaData(database), Collections.emptyList(),
+                selectStatement, "foo_db", Collections.emptyList());
         GroupByRowComparator groupByRowComparator = new GroupByRowComparator(selectStatementContext, caseSensitives);
         MemoryQueryResultRow o1 = new MemoryQueryResultRow(mockQueryResult("1", "2"));
         MemoryQueryResultRow o2 = new MemoryQueryResultRow(mockQueryResult("3", "4"));
@@ -98,42 +98,42 @@ public final class GroupByRowComparatorTest {
     }
     
     @Test
-    public void assertCompareToForDecsWithOrderByItemsForMySQL() throws SQLException {
-        assertCompareToForDecsWithOrderByItems(new MySQLSelectStatement());
+    void assertCompareToForDescWithOrderByItemsForMySQL() throws SQLException {
+        assertCompareToForDescWithOrderByItems(new MySQLSelectStatement());
     }
     
     @Test
-    public void assertCompareToForDecsWithOrderByItemsForOracle() throws SQLException {
-        assertCompareToForDecsWithOrderByItems(new OracleSelectStatement());
+    void assertCompareToForDescWithOrderByItemsForOracle() throws SQLException {
+        assertCompareToForDescWithOrderByItems(new OracleSelectStatement());
     }
     
     @Test
-    public void assertCompareToForDecsWithOrderByItemsForPostgreSQL() throws SQLException {
-        assertCompareToForDecsWithOrderByItems(new PostgreSQLSelectStatement());
+    void assertCompareToForDescWithOrderByItemsForPostgreSQL() throws SQLException {
+        assertCompareToForDescWithOrderByItems(new PostgreSQLSelectStatement());
     }
     
     @Test
-    public void assertCompareToForDecsWithOrderByItemsForSQL92() throws SQLException {
-        assertCompareToForDecsWithOrderByItems(new SQL92SelectStatement());
+    void assertCompareToForDescWithOrderByItemsForSQL92() throws SQLException {
+        assertCompareToForDescWithOrderByItems(new SQL92SelectStatement());
     }
     
     @Test
-    public void assertCompareToForDecsWithOrderByItemsForSQLServer() throws SQLException {
-        assertCompareToForDecsWithOrderByItems(new SQLServerSelectStatement());
+    void assertCompareToForDescWithOrderByItemsForSQLServer() throws SQLException {
+        assertCompareToForDescWithOrderByItems(new SQLServerSelectStatement());
     }
     
-    private void assertCompareToForDecsWithOrderByItems(final SelectStatement selectStatement) throws SQLException {
+    private void assertCompareToForDescWithOrderByItems(final SelectStatement selectStatement) throws SQLException {
         ShardingSphereDatabase database = mock(ShardingSphereDatabase.class, RETURNS_DEEP_STUBS);
-        when(database.getSchema(DefaultDatabase.LOGIC_NAME)).thenReturn(mock(ShardingSphereSchema.class));
+        when(database.getName()).thenReturn("foo_db");
         selectStatement.setGroupBy(new GroupBySegment(0, 0, Arrays.asList(
-                new IndexOrderByItemSegment(0, 0, 1, OrderDirection.ASC, OrderDirection.ASC),
-                new IndexOrderByItemSegment(0, 0, 2, OrderDirection.ASC, OrderDirection.ASC))));
+                new IndexOrderByItemSegment(0, 0, 1, OrderDirection.ASC, NullsOrderType.FIRST),
+                new IndexOrderByItemSegment(0, 0, 2, OrderDirection.ASC, NullsOrderType.FIRST))));
         selectStatement.setOrderBy(new OrderBySegment(0, 0, Arrays.asList(
-                new IndexOrderByItemSegment(0, 0, 1, OrderDirection.DESC, OrderDirection.ASC),
-                new IndexOrderByItemSegment(0, 0, 2, OrderDirection.DESC, OrderDirection.ASC))));
+                new IndexOrderByItemSegment(0, 0, 1, OrderDirection.DESC, NullsOrderType.FIRST),
+                new IndexOrderByItemSegment(0, 0, 2, OrderDirection.DESC, NullsOrderType.FIRST))));
         selectStatement.setProjections(new ProjectionsSegment(0, 0));
-        SelectStatementContext selectStatementContext = new SelectStatementContext(Collections.singletonMap(DefaultDatabase.LOGIC_NAME, database), Collections.emptyList(),
-                selectStatement, DefaultDatabase.LOGIC_NAME);
+        SelectStatementContext selectStatementContext = new SelectStatementContext(createShardingSphereMetaData(database), Collections.emptyList(),
+                selectStatement, "foo_db", Collections.emptyList());
         GroupByRowComparator groupByRowComparator = new GroupByRowComparator(selectStatementContext, caseSensitives);
         MemoryQueryResultRow o1 = new MemoryQueryResultRow(mockQueryResult("1", "2"));
         MemoryQueryResultRow o2 = new MemoryQueryResultRow(mockQueryResult("3", "4"));
@@ -141,42 +141,42 @@ public final class GroupByRowComparatorTest {
     }
     
     @Test
-    public void assertCompareToForEqualWithOrderByItemsForMySQL() throws SQLException {
+    void assertCompareToForEqualWithOrderByItemsForMySQL() throws SQLException {
         assertCompareToForEqualWithOrderByItems(new MySQLSelectStatement());
     }
     
     @Test
-    public void assertCompareToForEqualWithOrderByItemsForOracle() throws SQLException {
+    void assertCompareToForEqualWithOrderByItemsForOracle() throws SQLException {
         assertCompareToForEqualWithOrderByItems(new OracleSelectStatement());
     }
     
     @Test
-    public void assertCompareToForEqualWithOrderByItemsForPostgreSQL() throws SQLException {
+    void assertCompareToForEqualWithOrderByItemsForPostgreSQL() throws SQLException {
         assertCompareToForEqualWithOrderByItems(new PostgreSQLSelectStatement());
     }
     
     @Test
-    public void assertCompareToForEqualWithOrderByItemsForSQL92() throws SQLException {
+    void assertCompareToForEqualWithOrderByItemsForSQL92() throws SQLException {
         assertCompareToForEqualWithOrderByItems(new SQL92SelectStatement());
     }
     
     @Test
-    public void assertCompareToForEqualWithOrderByItemsForSQLServer() throws SQLException {
+    void assertCompareToForEqualWithOrderByItemsForSQLServer() throws SQLException {
         assertCompareToForEqualWithOrderByItems(new SQLServerSelectStatement());
     }
     
     private void assertCompareToForEqualWithOrderByItems(final SelectStatement selectStatement) throws SQLException {
         ShardingSphereDatabase database = mock(ShardingSphereDatabase.class, RETURNS_DEEP_STUBS);
-        when(database.getSchema(DefaultDatabase.LOGIC_NAME)).thenReturn(mock(ShardingSphereSchema.class));
+        when(database.getName()).thenReturn("foo_db");
         selectStatement.setGroupBy(new GroupBySegment(0, 0, Arrays.asList(
-                new IndexOrderByItemSegment(0, 0, 1, OrderDirection.DESC, OrderDirection.ASC),
-                new IndexOrderByItemSegment(0, 0, 2, OrderDirection.ASC, OrderDirection.ASC))));
+                new IndexOrderByItemSegment(0, 0, 1, OrderDirection.DESC, NullsOrderType.FIRST),
+                new IndexOrderByItemSegment(0, 0, 2, OrderDirection.ASC, NullsOrderType.FIRST))));
         selectStatement.setOrderBy(new OrderBySegment(0, 0, Arrays.asList(
-                new IndexOrderByItemSegment(0, 0, 1, OrderDirection.ASC, OrderDirection.ASC),
-                new IndexOrderByItemSegment(0, 0, 2, OrderDirection.DESC, OrderDirection.ASC))));
+                new IndexOrderByItemSegment(0, 0, 1, OrderDirection.ASC, NullsOrderType.FIRST),
+                new IndexOrderByItemSegment(0, 0, 2, OrderDirection.DESC, NullsOrderType.FIRST))));
         selectStatement.setProjections(new ProjectionsSegment(0, 0));
-        SelectStatementContext selectStatementContext = new SelectStatementContext(Collections.singletonMap(DefaultDatabase.LOGIC_NAME, database), Collections.emptyList(),
-                selectStatement, DefaultDatabase.LOGIC_NAME);
+        SelectStatementContext selectStatementContext = new SelectStatementContext(createShardingSphereMetaData(database), Collections.emptyList(),
+                selectStatement, "foo_db", Collections.emptyList());
         GroupByRowComparator groupByRowComparator = new GroupByRowComparator(selectStatementContext, caseSensitives);
         MemoryQueryResultRow o1 = new MemoryQueryResultRow(mockQueryResult("1", "2"));
         MemoryQueryResultRow o2 = new MemoryQueryResultRow(mockQueryResult("1", "2"));
@@ -184,40 +184,40 @@ public final class GroupByRowComparatorTest {
     }
     
     @Test
-    public void assertCompareToForAscWithGroupByItemsForMySQL() throws SQLException {
+    void assertCompareToForAscWithGroupByItemsForMySQL() throws SQLException {
         assertCompareToForAscWithGroupByItems(new MySQLSelectStatement());
     }
     
     @Test
-    public void assertCompareToForAscWithGroupByItemsForOracle() throws SQLException {
+    void assertCompareToForAscWithGroupByItemsForOracle() throws SQLException {
         assertCompareToForAscWithGroupByItems(new OracleSelectStatement());
     }
     
     @Test
-    public void assertCompareToForAscWithGroupByItemsForPostgreSQL() throws SQLException {
+    void assertCompareToForAscWithGroupByItemsForPostgreSQL() throws SQLException {
         assertCompareToForAscWithGroupByItems(new PostgreSQLSelectStatement());
     }
     
     @Test
-    public void assertCompareToForAscWithGroupByItemsForSQL92() throws SQLException {
+    void assertCompareToForAscWithGroupByItemsForSQL92() throws SQLException {
         assertCompareToForAscWithGroupByItems(new SQL92SelectStatement());
     }
     
     @Test
-    public void assertCompareToForAscWithGroupByItemsForSQLServer() throws SQLException {
+    void assertCompareToForAscWithGroupByItemsForSQLServer() throws SQLException {
         assertCompareToForAscWithGroupByItems(new SQLServerSelectStatement());
     }
     
     private void assertCompareToForAscWithGroupByItems(final SelectStatement selectStatement) throws SQLException {
         ShardingSphereDatabase database = mock(ShardingSphereDatabase.class, RETURNS_DEEP_STUBS);
-        when(database.getSchema(DefaultDatabase.LOGIC_NAME)).thenReturn(mock(ShardingSphereSchema.class));
+        when(database.getName()).thenReturn("foo_db");
         selectStatement.setGroupBy(new GroupBySegment(0, 0, Arrays.asList(
-                new IndexOrderByItemSegment(0, 0, 1, OrderDirection.ASC, OrderDirection.ASC),
-                new IndexOrderByItemSegment(0, 0, 2, OrderDirection.ASC, OrderDirection.ASC))));
+                new IndexOrderByItemSegment(0, 0, 1, OrderDirection.ASC, NullsOrderType.FIRST),
+                new IndexOrderByItemSegment(0, 0, 2, OrderDirection.ASC, NullsOrderType.FIRST))));
         selectStatement.setOrderBy(new OrderBySegment(0, 0, Collections.emptyList()));
         selectStatement.setProjections(new ProjectionsSegment(0, 0));
-        SelectStatementContext selectStatementContext = new SelectStatementContext(Collections.singletonMap(DefaultDatabase.LOGIC_NAME, database), Collections.emptyList(),
-                selectStatement, DefaultDatabase.LOGIC_NAME);
+        SelectStatementContext selectStatementContext = new SelectStatementContext(createShardingSphereMetaData(database), Collections.emptyList(),
+                selectStatement, "foo_db", Collections.emptyList());
         GroupByRowComparator groupByRowComparator = new GroupByRowComparator(selectStatementContext, caseSensitives);
         MemoryQueryResultRow o1 = new MemoryQueryResultRow(mockQueryResult("1", "2"));
         MemoryQueryResultRow o2 = new MemoryQueryResultRow(mockQueryResult("3", "4"));
@@ -225,81 +225,85 @@ public final class GroupByRowComparatorTest {
     }
     
     @Test
-    public void assertCompareToForDecsWithGroupByItemsForMySQL() throws SQLException {
-        assertCompareToForDecsWithGroupByItems(new MySQLSelectStatement());
+    void assertCompareToForDecsWithGroupByItemsForMySQL() throws SQLException {
+        assertCompareToForDescWithGroupByItems(new MySQLSelectStatement());
     }
     
     @Test
-    public void assertCompareToForDecsWithGroupByItemsForOracle() throws SQLException {
-        assertCompareToForDecsWithGroupByItems(new OracleSelectStatement());
+    void assertCompareToForDecsWithGroupByItemsForOracle() throws SQLException {
+        assertCompareToForDescWithGroupByItems(new OracleSelectStatement());
     }
     
     @Test
-    public void assertCompareToForDecsWithGroupByItemsForPostgreSQL() throws SQLException {
-        assertCompareToForDecsWithGroupByItems(new PostgreSQLSelectStatement());
+    void assertCompareToForDecsWithGroupByItemsForPostgreSQL() throws SQLException {
+        assertCompareToForDescWithGroupByItems(new PostgreSQLSelectStatement());
     }
     
     @Test
-    public void assertCompareToForDecsWithGroupByItemsForSQL92() throws SQLException {
-        assertCompareToForDecsWithGroupByItems(new SQL92SelectStatement());
+    void assertCompareToForDecsWithGroupByItemsForSQL92() throws SQLException {
+        assertCompareToForDescWithGroupByItems(new SQL92SelectStatement());
     }
     
     @Test
-    public void assertCompareToForDecsWithGroupByItemsForSQLServer() throws SQLException {
-        assertCompareToForDecsWithGroupByItems(new SQLServerSelectStatement());
+    void assertCompareToForDecsWithGroupByItemsForSQLServer() throws SQLException {
+        assertCompareToForDescWithGroupByItems(new SQLServerSelectStatement());
     }
     
-    private void assertCompareToForDecsWithGroupByItems(final SelectStatement selectStatement) throws SQLException {
+    private void assertCompareToForDescWithGroupByItems(final SelectStatement selectStatement) throws SQLException {
         ShardingSphereDatabase database = mock(ShardingSphereDatabase.class, RETURNS_DEEP_STUBS);
-        when(database.getSchema(DefaultDatabase.LOGIC_NAME)).thenReturn(mock(ShardingSphereSchema.class));
+        when(database.getName()).thenReturn("foo_db");
         selectStatement.setGroupBy(new GroupBySegment(0, 0, Arrays.asList(
-                new IndexOrderByItemSegment(0, 0, 1, OrderDirection.DESC, OrderDirection.ASC),
-                new IndexOrderByItemSegment(0, 0, 2, OrderDirection.DESC, OrderDirection.ASC))));
+                new IndexOrderByItemSegment(0, 0, 1, OrderDirection.DESC, NullsOrderType.FIRST),
+                new IndexOrderByItemSegment(0, 0, 2, OrderDirection.DESC, NullsOrderType.FIRST))));
         selectStatement.setOrderBy(new OrderBySegment(0, 0, Collections.emptyList()));
         selectStatement.setProjections(new ProjectionsSegment(0, 0));
-        SelectStatementContext selectStatementContext = new SelectStatementContext(Collections.singletonMap(DefaultDatabase.LOGIC_NAME, database), Collections.emptyList(),
-                selectStatement, DefaultDatabase.LOGIC_NAME);
+        SelectStatementContext selectStatementContext = new SelectStatementContext(
+                createShardingSphereMetaData(database), Collections.emptyList(), selectStatement, "foo_db", Collections.emptyList());
         GroupByRowComparator groupByRowComparator = new GroupByRowComparator(selectStatementContext, caseSensitives);
         MemoryQueryResultRow o1 = new MemoryQueryResultRow(mockQueryResult("1", "2"));
         MemoryQueryResultRow o2 = new MemoryQueryResultRow(mockQueryResult("3", "4"));
         assertTrue(groupByRowComparator.compare(o1, o2) > 0);
     }
     
+    private ShardingSphereMetaData createShardingSphereMetaData(final ShardingSphereDatabase database) {
+        return new ShardingSphereMetaData(Collections.singleton(database), mock(), mock(), mock());
+    }
+    
     @Test
-    public void assertCompareToForEqualWithGroupByItemsForMySQL() throws SQLException {
+    void assertCompareToForEqualWithGroupByItemsForMySQL() throws SQLException {
         assertCompareToForEqualWithGroupByItems(new MySQLSelectStatement());
     }
     
     @Test
-    public void assertCompareToForEqualWithGroupByItemsForOracle() throws SQLException {
+    void assertCompareToForEqualWithGroupByItemsForOracle() throws SQLException {
         assertCompareToForEqualWithGroupByItems(new OracleSelectStatement());
     }
     
     @Test
-    public void assertCompareToForEqualWithGroupByItemsForPostgreSQL() throws SQLException {
+    void assertCompareToForEqualWithGroupByItemsForPostgreSQL() throws SQLException {
         assertCompareToForEqualWithGroupByItems(new PostgreSQLSelectStatement());
     }
     
     @Test
-    public void assertCompareToForEqualWithGroupByItemsForSQL92() throws SQLException {
+    void assertCompareToForEqualWithGroupByItemsForSQL92() throws SQLException {
         assertCompareToForEqualWithGroupByItems(new SQL92SelectStatement());
     }
     
     @Test
-    public void assertCompareToForEqualWithGroupByItemsForSQLServer() throws SQLException {
+    void assertCompareToForEqualWithGroupByItemsForSQLServer() throws SQLException {
         assertCompareToForEqualWithGroupByItems(new SQLServerSelectStatement());
     }
     
     private void assertCompareToForEqualWithGroupByItems(final SelectStatement selectStatement) throws SQLException {
         ShardingSphereDatabase database = mock(ShardingSphereDatabase.class, RETURNS_DEEP_STUBS);
-        when(database.getSchema(DefaultDatabase.LOGIC_NAME)).thenReturn(mock(ShardingSphereSchema.class));
+        when(database.getName()).thenReturn("foo_db");
         selectStatement.setGroupBy(new GroupBySegment(0, 0, Arrays.asList(
-                new IndexOrderByItemSegment(0, 0, 1, OrderDirection.ASC, OrderDirection.ASC),
-                new IndexOrderByItemSegment(0, 0, 2, OrderDirection.DESC, OrderDirection.ASC))));
+                new IndexOrderByItemSegment(0, 0, 1, OrderDirection.ASC, NullsOrderType.FIRST),
+                new IndexOrderByItemSegment(0, 0, 2, OrderDirection.DESC, NullsOrderType.FIRST))));
         selectStatement.setOrderBy(new OrderBySegment(0, 0, Collections.emptyList()));
         selectStatement.setProjections(new ProjectionsSegment(0, 0));
-        SelectStatementContext selectStatementContext = new SelectStatementContext(Collections.singletonMap(DefaultDatabase.LOGIC_NAME, database), Collections.emptyList(),
-                selectStatement, DefaultDatabase.LOGIC_NAME);
+        SelectStatementContext selectStatementContext = new SelectStatementContext(createShardingSphereMetaData(database), Collections.emptyList(),
+                selectStatement, "foo_db", Collections.emptyList());
         GroupByRowComparator groupByRowComparator = new GroupByRowComparator(selectStatementContext, caseSensitives);
         MemoryQueryResultRow o1 = new MemoryQueryResultRow(mockQueryResult("1", "2"));
         MemoryQueryResultRow o2 = new MemoryQueryResultRow(mockQueryResult("1", "2"));

@@ -33,12 +33,13 @@ public final class ClassBasedShardingAlgorithmFactory {
     
     /**
      * Create sharding algorithm.
-     * 
+     *
      * @param shardingAlgorithmClassName sharding algorithm class name
      * @param superShardingAlgorithmClass sharding algorithm super class
      * @param props properties
      * @param <T> class generic type
      * @return sharding algorithm instance
+     * @throws ShardingAlgorithmClassImplementationException sharding algorithm class implementation exception
      */
     @SuppressWarnings("unchecked")
     @SneakyThrows(ReflectiveOperationException.class)

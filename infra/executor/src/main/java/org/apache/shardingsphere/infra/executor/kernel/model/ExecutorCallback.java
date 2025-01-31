@@ -19,7 +19,6 @@ package org.apache.shardingsphere.infra.executor.kernel.model;
 
 import java.sql.SQLException;
 import java.util.Collection;
-import java.util.Map;
 
 /**
  * Grouped callback.
@@ -31,12 +30,12 @@ public interface ExecutorCallback<I, O> {
     
     /**
      * Execute.
-     * 
+     *
      * @param inputs input values
      * @param isTrunkThread is execution in trunk thread
-     * @param dataMap data map
+     * @param processId process ID
      * @return execution results
      * @throws SQLException throw when execute failure
      */
-    Collection<O> execute(Collection<I> inputs, boolean isTrunkThread, Map<String, Object> dataMap) throws SQLException;
+    Collection<O> execute(Collection<I> inputs, boolean isTrunkThread, String processId) throws SQLException;
 }

@@ -17,15 +17,16 @@
 
 package org.apache.shardingsphere.infra.executor.sql.prepare.driver;
 
-import org.apache.shardingsphere.infra.database.type.DatabaseType;
+import lombok.Getter;
+import org.apache.shardingsphere.infra.database.core.type.DatabaseType;
 import org.apache.shardingsphere.infra.executor.kernel.model.ExecutionGroup;
 import org.apache.shardingsphere.infra.executor.sql.context.ExecutionUnit;
-import org.apache.shardingsphere.infra.executor.sql.context.SQLUnit;
 import org.apache.shardingsphere.infra.executor.sql.execute.engine.ConnectionMode;
 import org.apache.shardingsphere.infra.executor.sql.execute.engine.driver.DriverExecutionUnit;
 import org.apache.shardingsphere.infra.executor.sql.prepare.AbstractExecutionPrepareEngine;
-import org.apache.shardingsphere.infra.executor.sql.prepare.driver.jdbc.DatabaseTypeAware;
+import org.apache.shardingsphere.infra.metadata.database.resource.unit.StorageUnit;
 import org.apache.shardingsphere.infra.rule.ShardingSphereRule;
+import org.apache.shardingsphere.infra.spi.type.typed.TypedSPILoader;
 
 import java.sql.SQLException;
 import java.util.Collection;
@@ -43,9 +44,12 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class DriverExecutionPrepareEngine<T extends DriverExecutionUnit<?>, C> extends AbstractExecutionPrepareEngine<T> {
     
     @SuppressWarnings("rawtypes")
-    private static final Map<String, SQLExecutionUnitBuilder> TYPE_TO_BUILDER_MAP = new ConcurrentHashMap<>(8, 1);
+    private static final Map<String, SQLExecutionUnitBuilder> TYPE_TO_BUILDER_MAP = new ConcurrentHashMap<>(8, 1F);
     
-    private final ExecutorConnectionManager<C> connectionManager;
+    @Getter
+    private final String type;
+    
+    private final DatabaseConnectionManager<C> databaseConnectionManager;
     
     private final ExecutorStatementManager<C, ?, ?> statementManager;
     
@@ -54,17 +58,18 @@ public final class DriverExecutionPrepareEngine<T extends DriverExecutionUnit<?>
     @SuppressWarnings("rawtypes")
     private final SQLExecutionUnitBuilder sqlExecutionUnitBuilder;
     
-    private final DatabaseType databaseType;
+    private final Map<String, StorageUnit> storageUnits;
     
-    public DriverExecutionPrepareEngine(final String type, final int maxConnectionsSizePerQuery, final ExecutorConnectionManager<C> connectionManager,
+    public DriverExecutionPrepareEngine(final String type, final int maxConnectionsSizePerQuery, final DatabaseConnectionManager<C> databaseConnectionManager,
                                         final ExecutorStatementManager<C, ?, ?> statementManager, final StorageResourceOption option, final Collection<ShardingSphereRule> rules,
-                                        final DatabaseType databaseType) {
+                                        final Map<String, StorageUnit> storageUnits) {
         super(maxConnectionsSizePerQuery, rules);
-        this.connectionManager = connectionManager;
+        this.type = type;
+        this.databaseConnectionManager = databaseConnectionManager;
         this.statementManager = statementManager;
         this.option = option;
         sqlExecutionUnitBuilder = getCachedSqlExecutionUnitBuilder(type);
-        this.databaseType = databaseType;
+        this.storageUnits = storageUnits;
     }
     
     /**
@@ -77,31 +82,31 @@ public final class DriverExecutionPrepareEngine<T extends DriverExecutionUnit<?>
     private SQLExecutionUnitBuilder getCachedSqlExecutionUnitBuilder(final String type) {
         SQLExecutionUnitBuilder result;
         if (null == (result = TYPE_TO_BUILDER_MAP.get(type))) {
-            result = TYPE_TO_BUILDER_MAP.computeIfAbsent(type, SQLExecutionUnitBuilderFactory::getInstance);
+            result = TYPE_TO_BUILDER_MAP.computeIfAbsent(type, key -> TypedSPILoader.getService(SQLExecutionUnitBuilder.class, key));
         }
         return result;
     }
     
     @Override
-    protected List<ExecutionGroup<T>> group(final String dataSourceName, final List<List<SQLUnit>> sqlUnitGroups, final ConnectionMode connectionMode) throws SQLException {
+    protected List<ExecutionGroup<T>> group(final String databaseName, final String dataSourceName, final int connectionOffset, final List<List<ExecutionUnit>> executionUnitGroups,
+                                            final ConnectionMode connectionMode) throws SQLException {
         List<ExecutionGroup<T>> result = new LinkedList<>();
-        List<C> connections = connectionManager.getConnections(dataSourceName, sqlUnitGroups.size(), connectionMode);
+        List<C> connections = databaseConnectionManager.getConnections(databaseName, dataSourceName, connectionOffset, executionUnitGroups.size(), connectionMode);
         int count = 0;
-        for (List<SQLUnit> each : sqlUnitGroups) {
+        for (List<ExecutionUnit> each : executionUnitGroups) {
             result.add(createExecutionGroup(dataSourceName, each, connections.get(count++), connectionMode));
         }
         return result;
     }
     
     @SuppressWarnings("unchecked")
-    private ExecutionGroup<T> createExecutionGroup(final String dataSourceName, final List<SQLUnit> sqlUnits, final C connection, final ConnectionMode connectionMode) throws SQLException {
-        List<T> result = new LinkedList<>();
-        for (SQLUnit each : sqlUnits) {
-            if (statementManager instanceof DatabaseTypeAware) {
-                ((DatabaseTypeAware) statementManager).setDatabaseType(databaseType);
-            }
-            result.add((T) sqlExecutionUnitBuilder.build(new ExecutionUnit(dataSourceName, each), statementManager, connection, connectionMode, option));
+    private ExecutionGroup<T> createExecutionGroup(final String dataSourceName, final List<ExecutionUnit> executionUnits, final C connection, final ConnectionMode connectionMode) throws SQLException {
+        List<T> inputs = new LinkedList<>();
+        // TODO use metadata to replace storageUnits to support multiple logic databases
+        DatabaseType databaseType = storageUnits.containsKey(dataSourceName) ? storageUnits.get(dataSourceName).getStorageType() : storageUnits.values().iterator().next().getStorageType();
+        for (ExecutionUnit each : executionUnits) {
+            inputs.add((T) sqlExecutionUnitBuilder.build(each, statementManager, connection, connectionMode, option, databaseType));
         }
-        return new ExecutionGroup<>(result);
+        return new ExecutionGroup<>(inputs);
     }
 }

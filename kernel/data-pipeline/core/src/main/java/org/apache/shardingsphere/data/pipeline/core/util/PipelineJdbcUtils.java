@@ -20,10 +20,12 @@ package org.apache.shardingsphere.data.pipeline.core.util;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Types;
 
 /**
- * Pipeline JDBC utils.
+ * Pipeline JDBC utility class.
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class PipelineJdbcUtils {
@@ -35,7 +37,15 @@ public final class PipelineJdbcUtils {
      * @return true or false
      */
     public static boolean isIntegerColumn(final int columnType) {
-        return Types.INTEGER == columnType || Types.BIGINT == columnType || Types.SMALLINT == columnType || Types.TINYINT == columnType;
+        switch (columnType) {
+            case Types.INTEGER:
+            case Types.BIGINT:
+            case Types.SMALLINT:
+            case Types.TINYINT:
+                return true;
+            default:
+                return false;
+        }
     }
     
     /**
@@ -55,6 +65,40 @@ public final class PipelineJdbcUtils {
                 return true;
             default:
                 return false;
+        }
+    }
+    
+    /**
+     * Whether column is binary column.
+     * <p>it doesn't include BLOB etc.</p>
+     *
+     * @param columnType column type, value of java.sql.Types
+     * @return true or false
+     */
+    public static boolean isBinaryColumn(final int columnType) {
+        switch (columnType) {
+            case Types.BINARY:
+            case Types.VARBINARY:
+            case Types.LONGVARBINARY:
+                return true;
+            default:
+                return false;
+        }
+    }
+    
+    /**
+     * Cancel statement.
+     *
+     * @param statement statement
+     */
+    public static void cancelStatement(final Statement statement) {
+        try {
+            if (!statement.isClosed()) {
+                statement.cancel();
+            }
+            // CHECKSTYLE:OFF
+        } catch (final SQLException ignored) {
+            // CHECKSTYLE:ON
         }
     }
 }

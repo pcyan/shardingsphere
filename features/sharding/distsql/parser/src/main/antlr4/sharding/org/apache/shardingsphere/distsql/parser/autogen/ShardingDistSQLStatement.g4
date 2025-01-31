@@ -17,49 +17,35 @@
 
 grammar ShardingDistSQLStatement;
 
-import Symbol, RALStatement, RDLStatement, RQLStatement;
+import Symbol, RDLStatement, RQLStatement, RALStatement;
 
 execute
     : (createShardingTableRule
     | createDefaultShardingStrategy
-    | createShardingBindingTableRules
-    | createShardingBroadcastTableRules
+    | createShardingTableReferenceRule
     | alterShardingTableRule
-    | alterShardingBindingTableRules
-    | alterShardingBroadcastTableRules
+    | alterShardingTableReferenceRule
     | dropShardingTableRule
-    | dropShardingBindingTableRules
-    | dropShardingBroadcastTableRules
+    | dropShardingTableReferenceRule
     | dropShardingAlgorithm
     | showShardingTableRulesUsedAlgorithm
     | showShardingTableRulesUsedKeyGenerator
     | showShardingTableRulesUsedAuditor
     | showShardingTableRules
-    | showShardingBindingTableRules
-    | showShardingBroadcastTableRules
+    | showShardingTableReferenceRules
     | showShardingAlgorithms
-    | setShardingHintDatabaseValue
-    | addShardingHintDatabaseValue
-    | addShardingHintTableValue
-    | showShardingHintStatus
-    | clearShardingHint
-    | createShardingAlgorithm
-    | alterShardingAlgorithm
     | showShardingTableNodes
-    | createShardingKeyGenerator
-    | alterShardingKeyGenerator
     | showShardingKeyGenerators
     | dropShardingKeyGenerator
     | showShardingAuditors
-    | createShardingAuditor
-    | alterShardingAuditor
     | dropShardingAuditor
-    | showShardingDefaultShardingStrategy
+    | showDefaultShardingStrategy
     | alterDefaultShardingStrategy
     | dropDefaultShardingStrategy
     | showUnusedShardingAlgorithms
     | showUnusedShardingKeyGenerators
     | showUnusedShardingAuditors
     | countShardingRule
-    ) SEMI?
+    | showShardingAlgorithmPlugins
+    ) SEMI_? EOF
     ;

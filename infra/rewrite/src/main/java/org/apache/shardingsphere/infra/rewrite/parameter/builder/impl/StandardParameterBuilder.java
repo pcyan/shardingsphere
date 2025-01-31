@@ -23,12 +23,12 @@ import org.apache.shardingsphere.infra.rewrite.parameter.builder.ParameterBuilde
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.TreeMap;
 
 /**
  * Standard parameter builder.
@@ -39,55 +39,68 @@ public final class StandardParameterBuilder implements ParameterBuilder {
     private final List<Object> originalParameters;
     
     @Getter
-    private final Map<Integer, Collection<Object>> addedIndexAndParameters = new TreeMap<>();
+    private final Map<Integer, Collection<Object>> addedIndexAndParameters = new HashMap<>();
     
     private final Map<Integer, Object> replacedIndexAndParameters = new LinkedHashMap<>();
     
+    private int addedParameterCount;
+    
+    private int maxAddedParameterIndex;
+    
     /**
      * Add added parameters.
-     * 
+     *
      * @param index parameters index to be added
-     * @param parameters parameters to be added
+     * @param params parameters to be added
      */
-    public void addAddedParameters(final int index, final Collection<Object> parameters) {
-        addedIndexAndParameters.put(index, parameters);
+    public void addAddedParameters(final int index, final Collection<Object> params) {
+        addedParameterCount += params.size();
+        maxAddedParameterIndex = Math.max(maxAddedParameterIndex, index);
+        Collection<Object> existedAddedIndexAndParameters = addedIndexAndParameters.computeIfAbsent(index, unused -> new LinkedList<>());
+        existedAddedIndexAndParameters.addAll(params);
     }
     
     /**
      * Add replaced parameter.
-     * 
+     *
      * @param index parameter index to be replaced
-     * @param parameter parameter to be replaced
+     * @param param parameter to be replaced
      */
-    public void addReplacedParameters(final int index, final Object parameter) {
-        replacedIndexAndParameters.put(index, parameter);
+    public void addReplacedParameters(final int index, final Object param) {
+        replacedIndexAndParameters.put(index, param);
     }
     
     @Override
     public List<Object> getParameters() {
-        List<Object> replacedParameters = new ArrayList<>(originalParameters);
-        for (Entry<Integer, Object> entry : replacedIndexAndParameters.entrySet()) {
-            replacedParameters.set(entry.getKey(), entry.getValue());
+        if (addedIndexAndParameters.isEmpty() && replacedIndexAndParameters.isEmpty()) {
+            return new ArrayList<>(originalParameters);
         }
-        int maxParameterIndex = getMaxParameterIndex(originalParameters, addedIndexAndParameters);
-        List<Object> result = new LinkedList<>();
-        for (int index = 0; index <= maxParameterIndex; index++) {
-            List<Object> currentIndexParameters = new LinkedList<>();
-            if (replacedParameters.size() > index) {
-                currentIndexParameters.add(replacedParameters.get(index));
+        List<Object> replacedParams = getReplacedParameters();
+        int maxParamIndex = getMaxParameterIndex();
+        List<Object> result = new ArrayList<>(replacedParams.size() + addedParameterCount);
+        for (int index = 0; index <= maxParamIndex; index++) {
+            if (replacedParams.size() > index) {
+                result.add(replacedParams.get(index));
             }
             if (addedIndexAndParameters.containsKey(index)) {
-                currentIndexParameters.addAll(addedIndexAndParameters.get(index));
+                result.addAll(addedIndexAndParameters.get(index));
             }
-            result.addAll(currentIndexParameters);
         }
         return result;
     }
     
-    private int getMaxParameterIndex(final List<Object> originalParameters, final Map<Integer, Collection<Object>> addedIndexAndParameters) {
-        if (addedIndexAndParameters.isEmpty()) {
-            return originalParameters.size() - 1;
+    private List<Object> getReplacedParameters() {
+        if (replacedIndexAndParameters.isEmpty()) {
+            return originalParameters;
         }
-        return Math.max(originalParameters.size() - 1, ((TreeMap<Integer, Collection<Object>>) addedIndexAndParameters).descendingMap().firstKey());
+        List<Object> result = new ArrayList<>(originalParameters);
+        for (Entry<Integer, Object> entry : replacedIndexAndParameters.entrySet()) {
+            result.set(entry.getKey(), entry.getValue());
+        }
+        return result;
+    }
+    
+    private int getMaxParameterIndex() {
+        return addedIndexAndParameters.isEmpty() ? originalParameters.size() - 1 : Math.max(originalParameters.size() - 1, maxAddedParameterIndex);
     }
 }

@@ -22,7 +22,8 @@ import org.apache.shardingsphere.db.protocol.mysql.payload.MySQLPacketPayload;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Timestamp;
-import java.util.Calendar;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Date;
 
 /**
@@ -31,7 +32,7 @@ import java.util.Date;
 public final class MySQLDateBinaryProtocolValue implements MySQLBinaryProtocolValue {
     
     @Override
-    public Object read(final MySQLPacketPayload payload) throws SQLException {
+    public Object read(final MySQLPacketPayload payload, final boolean unsigned) throws SQLException {
         int length = payload.readInt1();
         switch (length) {
             case 0:
@@ -49,33 +50,25 @@ public final class MySQLDateBinaryProtocolValue implements MySQLBinaryProtocolVa
         }
     }
     
-    @SuppressWarnings("MagicConstant")
     private Timestamp getTimestampForDate(final MySQLPacketPayload payload) {
-        Calendar result = Calendar.getInstance();
-        result.set(payload.readInt2(), payload.readInt1() - 1, payload.readInt1());
-        return new Timestamp(result.getTimeInMillis());
+        return Timestamp.valueOf(LocalDate.of(payload.readInt2(), payload.readInt1(), payload.readInt1()).atStartOfDay());
     }
     
-    @SuppressWarnings("MagicConstant")
     private Timestamp getTimestampForDatetime(final MySQLPacketPayload payload) {
-        Calendar result = Calendar.getInstance();
-        result.set(payload.readInt2(), payload.readInt1() - 1, payload.readInt1(), payload.readInt1(), payload.readInt1(), payload.readInt1());
-        return new Timestamp(result.getTimeInMillis());
+        return Timestamp.valueOf(LocalDateTime.of(payload.readInt2(), payload.readInt1(), payload.readInt1(), payload.readInt1(), payload.readInt1(), payload.readInt1()));
     }
     
     @Override
     public void write(final MySQLPacketPayload payload, final Object value) {
-        Timestamp timestamp = new Timestamp(((Date) value).getTime());
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(timestamp);
-        int year = calendar.get(Calendar.YEAR);
-        int month = calendar.get(Calendar.MONTH) + 1;
-        int dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH);
-        int hourOfDay = calendar.get(Calendar.HOUR_OF_DAY);
-        int minutes = calendar.get(Calendar.MINUTE);
-        int seconds = calendar.get(Calendar.SECOND);
-        int nanos = timestamp.getNanos();
-        boolean isTimeAbsent = 0 == hourOfDay && 0 == minutes && 0 == seconds;
+        LocalDateTime dateTime = value instanceof LocalDateTime ? (LocalDateTime) value : new Timestamp(((Date) value).getTime()).toLocalDateTime();
+        int year = dateTime.getYear();
+        int month = dateTime.getMonthValue();
+        int dayOfMonth = dateTime.getDayOfMonth();
+        int hours = dateTime.getHour();
+        int minutes = dateTime.getMinute();
+        int seconds = dateTime.getSecond();
+        int nanos = dateTime.getNano();
+        boolean isTimeAbsent = 0 == hours && 0 == minutes && 0 == seconds;
         boolean isNanosAbsent = 0 == nanos;
         if (isTimeAbsent && isNanosAbsent) {
             payload.writeInt1(4);
@@ -85,12 +78,12 @@ public final class MySQLDateBinaryProtocolValue implements MySQLBinaryProtocolVa
         if (isNanosAbsent) {
             payload.writeInt1(7);
             writeDate(payload, year, month, dayOfMonth);
-            writeTime(payload, hourOfDay, minutes, seconds);
+            writeTime(payload, hours, minutes, seconds);
             return;
         }
         payload.writeInt1(11);
         writeDate(payload, year, month, dayOfMonth);
-        writeTime(payload, hourOfDay, minutes, seconds);
+        writeTime(payload, hours, minutes, seconds);
         writeNanos(payload, nanos);
     }
     

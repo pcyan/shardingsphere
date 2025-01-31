@@ -16,13 +16,12 @@
   ~ limitations under the License.
   -->
 
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.apache.shardingsphere</groupId>
         <artifactId>shardingsphere-distribution</artifactId>
-        <version>5.2.2-SNAPSHOT</version>
+        <version>5.5.3-SNAPSHOT</version>
     </parent>
     <artifactId>shardingsphere-proxy-distribution</artifactId>
     <packaging>pom</packaging>
@@ -58,11 +57,22 @@
             <artifactId>logback-classic</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
     </dependencies>
     
     <profiles>
         <profile>
             <id>release</id>
+            <properties>
+                <remoteresources.skip>false</remoteresources.skip>
+                <maven.javadoc.skip>false</maven.javadoc.skip>
+                <checkstyle.skip>false</checkstyle.skip>
+                <rat.skip>false</rat.skip>
+            </properties>
             <build>
                 <finalName>apache-shardingsphere-${project.version}</finalName>
                 <plugins>
@@ -86,6 +96,21 @@
                     <plugin>
                         <groupId>net.nicoulaj.maven.plugins</groupId>
                         <artifactId>checksum-maven-plugin</artifactId>
+                    </plugin>
+                    <plugin>
+                        <artifactId>maven-source-plugin</artifactId>
+                    </plugin>
+                    <plugin>
+                        <groupId>io.smallrye</groupId>
+                        <artifactId>jandex-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>make-index</id>
+                                <goals>
+                                    <goal>jandex</goal>
+                                </goals>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>

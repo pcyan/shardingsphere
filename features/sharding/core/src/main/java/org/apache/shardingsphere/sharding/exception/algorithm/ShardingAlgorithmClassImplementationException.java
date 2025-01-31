@@ -17,7 +17,7 @@
 
 package org.apache.shardingsphere.sharding.exception.algorithm;
 
-import org.apache.shardingsphere.infra.util.exception.external.sql.sqlstate.XOpenSQLState;
+import org.apache.shardingsphere.infra.exception.core.external.sql.sqlstate.XOpenSQLState;
 import org.apache.shardingsphere.sharding.exception.ShardingSQLException;
 
 /**
@@ -28,6 +28,6 @@ public final class ShardingAlgorithmClassImplementationException extends Shardin
     private static final long serialVersionUID = 3053033454701332815L;
     
     public ShardingAlgorithmClassImplementationException(final String shardingAlgorithmClassName, final Class<?> superShardingAlgorithmClass) {
-        super(XOpenSQLState.GENERAL_ERROR, 80, "Sharding algorithm class `%s` should be implement `%s`.", shardingAlgorithmClassName, superShardingAlgorithmClass.getName());
+        super(XOpenSQLState.GENERAL_ERROR, 50, "Sharding algorithm class '%s' should be implement '%s'.", shardingAlgorithmClassName, superShardingAlgorithmClass.getName());
     }
 }

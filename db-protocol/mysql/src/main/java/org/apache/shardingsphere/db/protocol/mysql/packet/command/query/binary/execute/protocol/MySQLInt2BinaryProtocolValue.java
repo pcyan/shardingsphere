@@ -25,8 +25,11 @@ import org.apache.shardingsphere.db.protocol.mysql.payload.MySQLPacketPayload;
 public final class MySQLInt2BinaryProtocolValue implements MySQLBinaryProtocolValue {
     
     @Override
-    public Object read(final MySQLPacketPayload payload) {
-        return payload.readInt2();
+    public Object read(final MySQLPacketPayload payload, final boolean unsigned) {
+        if (unsigned) {
+            return payload.getByteBuf().readUnsignedShortLE();
+        }
+        return payload.getByteBuf().readShortLE();
     }
     
     @Override

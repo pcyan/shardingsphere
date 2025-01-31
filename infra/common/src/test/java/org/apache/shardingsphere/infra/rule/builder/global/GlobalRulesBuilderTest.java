@@ -17,63 +17,41 @@
 
 package org.apache.shardingsphere.infra.rule.builder.global;
 
-import org.apache.shardingsphere.infra.config.mode.ModeConfiguration;
 import org.apache.shardingsphere.infra.config.props.ConfigurationProperties;
-import org.apache.shardingsphere.infra.database.type.dialect.MySQLDatabaseType;
-import org.apache.shardingsphere.infra.instance.ComputeNodeInstance;
-import org.apache.shardingsphere.infra.instance.InstanceContext;
-import org.apache.shardingsphere.infra.instance.metadata.jdbc.JDBCInstanceMetaData;
-import org.apache.shardingsphere.infra.instance.workerid.WorkerIdGenerator;
-import org.apache.shardingsphere.infra.lock.LockContext;
+import org.apache.shardingsphere.infra.database.core.type.DatabaseType;
 import org.apache.shardingsphere.infra.metadata.database.ShardingSphereDatabase;
+import org.apache.shardingsphere.infra.metadata.database.ShardingSphereDatabaseFactory;
 import org.apache.shardingsphere.infra.rule.ShardingSphereRule;
 import org.apache.shardingsphere.infra.rule.builder.fixture.FixtureGlobalRule;
 import org.apache.shardingsphere.infra.rule.builder.fixture.FixtureGlobalRuleConfiguration;
-import org.apache.shardingsphere.infra.util.eventbus.EventBusContext;
-import org.junit.Test;
+import org.apache.shardingsphere.infra.spi.type.typed.TypedSPILoader;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Properties;
-import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-public final class GlobalRulesBuilderTest {
+class GlobalRulesBuilderTest {
     
     @Test
-    public void assertBuildRules() {
-        Collection<ShardingSphereRule> shardingSphereRules = GlobalRulesBuilder
-                .buildRules(Collections.singletonList(new FixtureGlobalRuleConfiguration()), Collections.singletonMap("logic_db", buildDatabase()), buildInstanceContext(),
-                        mock(ConfigurationProperties.class));
-        assertThat(shardingSphereRules.size(), is(1));
+    void assertBuildRules() {
+        Collection<ShardingSphereRule> rules = GlobalRulesBuilder.buildRules(Collections.singletonList(new FixtureGlobalRuleConfiguration()), Collections.singleton(buildDatabase()), mock());
+        assertThat(rules.size(), is(1));
+        assertThat(rules.iterator().next(), instanceOf(FixtureGlobalRule.class));
     }
     
     @Test
-    public void assertBuildRulesClassType() {
-        Collection<ShardingSphereRule> shardingSphereRules = GlobalRulesBuilder
-                .buildRules(Collections.singletonList(new FixtureGlobalRuleConfiguration()), Collections.singletonMap("logic_db", buildDatabase()), buildInstanceContext(),
-                        mock(ConfigurationProperties.class));
-        assertTrue(shardingSphereRules.toArray()[0] instanceof FixtureGlobalRule);
+    void assertBuildSingleRules() {
+        Collection<ShardingSphereRule> rules = GlobalRulesBuilder.buildSingleRules(new FixtureGlobalRuleConfiguration(), Collections.singleton(buildDatabase()), mock());
+        assertThat(rules.size(), is(1));
     }
     
     private ShardingSphereDatabase buildDatabase() {
-        return ShardingSphereDatabase.create("logic_db", new MySQLDatabaseType());
-    }
-    
-    private InstanceContext buildInstanceContext() {
-        ComputeNodeInstance computeNodeInstance = new ComputeNodeInstance(new JDBCInstanceMetaData(UUID.randomUUID().toString()));
-        ModeConfiguration modeConfig = new ModeConfiguration("Standalone", null);
-        return new InstanceContext(computeNodeInstance, createWorkerIdGenerator(), modeConfig, mock(LockContext.class), new EventBusContext());
-    }
-    
-    private WorkerIdGenerator createWorkerIdGenerator() {
-        WorkerIdGenerator result = mock(WorkerIdGenerator.class);
-        when(result.generate(new Properties())).thenReturn(0L);
-        return result;
+        return ShardingSphereDatabaseFactory.create("foo_db", TypedSPILoader.getService(DatabaseType.class, "FIXTURE"), new ConfigurationProperties(new Properties()));
     }
 }

@@ -18,26 +18,24 @@
 package org.apache.shardingsphere.encrypt.rewrite.parameter.rewriter;
 
 import com.google.common.base.Preconditions;
-import lombok.Setter;
-import org.apache.shardingsphere.encrypt.rewrite.aware.DatabaseNameAware;
+import lombok.RequiredArgsConstructor;
 import org.apache.shardingsphere.encrypt.rule.EncryptRule;
-import org.apache.shardingsphere.encrypt.rule.aware.EncryptRuleAware;
-import org.apache.shardingsphere.infra.binder.statement.SQLStatementContext;
-import org.apache.shardingsphere.infra.binder.statement.dml.InsertStatementContext;
-import org.apache.shardingsphere.infra.binder.statement.dml.UpdateStatementContext;
-import org.apache.shardingsphere.infra.binder.type.TableAvailable;
-import org.apache.shardingsphere.infra.database.type.DatabaseTypeEngine;
+import org.apache.shardingsphere.encrypt.rule.column.EncryptColumn;
+import org.apache.shardingsphere.infra.binder.context.statement.SQLStatementContext;
+import org.apache.shardingsphere.infra.binder.context.statement.dml.InsertStatementContext;
+import org.apache.shardingsphere.infra.binder.context.statement.dml.UpdateStatementContext;
+import org.apache.shardingsphere.infra.binder.context.type.TableAvailable;
+import org.apache.shardingsphere.infra.database.core.type.DatabaseTypeRegistry;
 import org.apache.shardingsphere.infra.rewrite.parameter.builder.ParameterBuilder;
 import org.apache.shardingsphere.infra.rewrite.parameter.builder.impl.GroupedParameterBuilder;
 import org.apache.shardingsphere.infra.rewrite.parameter.builder.impl.StandardParameterBuilder;
 import org.apache.shardingsphere.infra.rewrite.parameter.rewriter.ParameterRewriter;
-import org.apache.shardingsphere.sql.parser.sql.common.segment.dml.assignment.AssignmentSegment;
-import org.apache.shardingsphere.sql.parser.sql.common.segment.dml.assignment.SetAssignmentSegment;
-import org.apache.shardingsphere.sql.parser.sql.common.segment.dml.expr.simple.ParameterMarkerExpressionSegment;
-import org.apache.shardingsphere.sql.parser.sql.common.statement.SQLStatement;
-import org.apache.shardingsphere.sql.parser.sql.common.statement.dml.InsertStatement;
-import org.apache.shardingsphere.sql.parser.sql.common.statement.dml.UpdateStatement;
-import org.apache.shardingsphere.sql.parser.sql.dialect.handler.dml.InsertStatementHandler;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.dml.assignment.ColumnAssignmentSegment;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.dml.assignment.SetAssignmentSegment;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.simple.ParameterMarkerExpressionSegment;
+import org.apache.shardingsphere.sql.parser.statement.core.statement.SQLStatement;
+import org.apache.shardingsphere.sql.parser.statement.core.statement.dml.InsertStatement;
+import org.apache.shardingsphere.sql.parser.statement.core.statement.dml.UpdateStatement;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -48,64 +46,65 @@ import java.util.Optional;
 /**
  * Assignment parameter rewriter for encrypt.
  */
-@Setter
-public final class EncryptAssignmentParameterRewriter implements ParameterRewriter<SQLStatementContext<?>>, EncryptRuleAware, DatabaseNameAware {
+@RequiredArgsConstructor
+public final class EncryptAssignmentParameterRewriter implements ParameterRewriter {
     
-    private EncryptRule encryptRule;
+    private final EncryptRule rule;
     
-    private String databaseName;
+    private final String databaseName;
     
     @Override
-    public boolean isNeedRewrite(final SQLStatementContext<?> sqlStatementContext) {
+    public boolean isNeedRewrite(final SQLStatementContext sqlStatementContext) {
         if (sqlStatementContext instanceof UpdateStatementContext) {
             return true;
         }
         if (sqlStatementContext instanceof InsertStatementContext) {
-            return InsertStatementHandler.getSetAssignmentSegment(((InsertStatementContext) sqlStatementContext).getSqlStatement()).isPresent();
+            return (((InsertStatementContext) sqlStatementContext).getSqlStatement()).getSetAssignment().isPresent();
         }
         return false;
     }
     
     @Override
-    public void rewrite(final ParameterBuilder parameterBuilder, final SQLStatementContext<?> sqlStatementContext, final List<Object> parameters) {
-        String tableName = ((TableAvailable) sqlStatementContext).getAllTables().iterator().next().getTableName().getIdentifier().getValue();
-        String schemaName = sqlStatementContext.getTablesContext().getSchemaName().orElseGet(() -> DatabaseTypeEngine.getDefaultSchemaName(sqlStatementContext.getDatabaseType(), databaseName));
-        for (AssignmentSegment each : getSetAssignmentSegment(sqlStatementContext.getSqlStatement()).getAssignments()) {
-            if (each.getValue() instanceof ParameterMarkerExpressionSegment && encryptRule.findEncryptor(tableName, each.getColumns().get(0).getIdentifier().getValue()).isPresent()) {
-                StandardParameterBuilder standardParameterBuilder = parameterBuilder instanceof StandardParameterBuilder
-                        ? (StandardParameterBuilder) parameterBuilder
-                        : ((GroupedParameterBuilder) parameterBuilder).getParameterBuilders().get(0);
-                encryptParameters(standardParameterBuilder, schemaName, tableName, each, parameters);
+    public void rewrite(final ParameterBuilder paramBuilder, final SQLStatementContext sqlStatementContext, final List<Object> params) {
+        String tableName = ((TableAvailable) sqlStatementContext).getTablesContext().getSimpleTables().iterator().next().getTableName().getIdentifier().getValue();
+        String schemaName = ((TableAvailable) sqlStatementContext).getTablesContext().getSchemaName()
+                .orElseGet(() -> new DatabaseTypeRegistry(sqlStatementContext.getDatabaseType()).getDefaultSchemaName(databaseName));
+        for (ColumnAssignmentSegment each : getSetAssignmentSegment(sqlStatementContext.getSqlStatement()).getAssignments()) {
+            String columnName = each.getColumns().get(0).getIdentifier().getValue();
+            if (each.getValue() instanceof ParameterMarkerExpressionSegment && rule.findEncryptTable(tableName).map(optional -> optional.isEncryptColumn(columnName)).orElse(false)) {
+                EncryptColumn encryptColumn = rule.getEncryptTable(tableName).getEncryptColumn(columnName);
+                StandardParameterBuilder standardParamBuilder = paramBuilder instanceof StandardParameterBuilder
+                        ? (StandardParameterBuilder) paramBuilder
+                        : ((GroupedParameterBuilder) paramBuilder).getParameterBuilders().get(0);
+                encryptParameters(standardParamBuilder, schemaName, tableName, encryptColumn, ((ParameterMarkerExpressionSegment) each.getValue()).getParameterMarkerIndex(), params);
             }
         }
     }
     
     private SetAssignmentSegment getSetAssignmentSegment(final SQLStatement sqlStatement) {
         if (sqlStatement instanceof InsertStatement) {
-            Optional<SetAssignmentSegment> result = InsertStatementHandler.getSetAssignmentSegment((InsertStatement) sqlStatement);
+            Optional<SetAssignmentSegment> result = ((InsertStatement) sqlStatement).getSetAssignment();
             Preconditions.checkState(result.isPresent());
             return result.get();
         }
         return ((UpdateStatement) sqlStatement).getSetAssignment();
     }
     
-    private void encryptParameters(final StandardParameterBuilder parameterBuilder, final String schemaName,
-                                   final String tableName, final AssignmentSegment assignmentSegment, final List<Object> parameters) {
-        String columnName = assignmentSegment.getColumns().get(0).getIdentifier().getValue();
-        int parameterMarkerIndex = ((ParameterMarkerExpressionSegment) assignmentSegment.getValue()).getParameterMarkerIndex();
-        Object originalValue = parameters.get(parameterMarkerIndex);
-        Object cipherValue = encryptRule.getEncryptValues(databaseName, schemaName, tableName, columnName, Collections.singletonList(originalValue)).iterator().next();
-        parameterBuilder.addReplacedParameters(parameterMarkerIndex, cipherValue);
-        Collection<Object> addedParameters = new LinkedList<>();
-        if (encryptRule.findAssistedQueryColumn(tableName, columnName).isPresent()) {
-            Object assistedQueryValue = encryptRule.getEncryptAssistedQueryValues(databaseName, schemaName, tableName, columnName, Collections.singletonList(originalValue)).iterator().next();
-            addedParameters.add(assistedQueryValue);
+    private void encryptParameters(final StandardParameterBuilder paramBuilder, final String schemaName,
+                                   final String tableName, final EncryptColumn encryptColumn, final int parameterMarkerIndex, final List<Object> params) {
+        String columnName = encryptColumn.getName();
+        Object originalValue = params.get(parameterMarkerIndex);
+        Object cipherValue = encryptColumn.getCipher().encrypt(databaseName, schemaName, tableName, columnName, Collections.singletonList(originalValue)).iterator().next();
+        paramBuilder.addReplacedParameters(parameterMarkerIndex, cipherValue);
+        Collection<Object> addedParams = new LinkedList<>();
+        if (encryptColumn.getAssistedQuery().isPresent()) {
+            addedParams.add(encryptColumn.getAssistedQuery().get().encrypt(databaseName, schemaName, tableName, columnName, Collections.singletonList(originalValue)).iterator().next());
         }
-        if (encryptRule.findPlainColumn(tableName, columnName).isPresent()) {
-            addedParameters.add(originalValue);
+        if (encryptColumn.getLikeQuery().isPresent()) {
+            addedParams.add(encryptColumn.getLikeQuery().get().encrypt(databaseName, schemaName, tableName, columnName, Collections.singletonList(originalValue)).iterator().next());
         }
-        if (!addedParameters.isEmpty()) {
-            parameterBuilder.addAddedParameters(parameterMarkerIndex, addedParameters);
+        if (!addedParams.isEmpty()) {
+            paramBuilder.addAddedParameters(parameterMarkerIndex, addedParams);
         }
     }
 }
