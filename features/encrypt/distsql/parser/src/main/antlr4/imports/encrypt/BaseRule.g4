@@ -14,11 +14,48 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 grammar BaseRule;
 
 import Symbol, Keyword, Literals;
 
+literal
+    : STRING_ | (MINUS_)? INT_ | TRUE | FALSE
+    ;
+
+algorithmDefinition
+    : TYPE LP_ NAME EQ_ algorithmTypeName (COMMA_ propertiesDefinition)? RP_
+    ;
+
+algorithmTypeName
+    : STRING_ | buildInEncryptAlgorithmType
+    ;
+
+buildInEncryptAlgorithmType
+    : standardEncryptAlgorithm
+    | assistedEncryptAlgorithm
+    ;
+
+standardEncryptAlgorithm
+    : AES
+    ;
+
+assistedEncryptAlgorithm
+    : MD5
+    ;
+
+propertiesDefinition
+    : PROPERTIES LP_ properties? RP_
+    ;
+
+properties
+    : property (COMMA_ property)*
+    ;
+
+property
+    : key=STRING_ EQ_ value=literal
+    ;
+
 tableName
-    : IDENTIFIER
+    : IDENTIFIER_
     ;

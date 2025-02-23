@@ -23,11 +23,15 @@ import org.apache.shardingsphere.infra.executor.sql.execute.result.query.QueryRe
 import org.apache.shardingsphere.infra.executor.sql.execute.result.query.QueryResultMetaData;
 import org.apache.shardingsphere.infra.executor.sql.execute.result.query.type.memory.row.MemoryQueryResultDataRow;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.ObjectOutputStream;
+import java.io.Reader;
+import java.sql.SQLException;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Iterator;
@@ -42,10 +46,13 @@ public abstract class AbstractMemoryQueryResult implements QueryResult {
     
     private final Iterator<MemoryQueryResultDataRow> rows;
     
+    @Getter
     private MemoryQueryResultDataRow currentRow;
     
     @Getter
     private long rowCount;
+    
+    private boolean wasNull;
     
     protected AbstractMemoryQueryResult(final QueryResultMetaData metaData, final Collection<MemoryQueryResultDataRow> rows) {
         this.metaData = metaData;
@@ -66,17 +73,23 @@ public abstract class AbstractMemoryQueryResult implements QueryResult {
     
     @Override
     public final Object getValue(final int columnIndex, final Class<?> type) {
-        return currentRow.getValue().get(columnIndex - 1);
+        Object result = currentRow.getValue().get(columnIndex - 1);
+        wasNull = null == result;
+        return result;
     }
     
     @Override
     public final Object getCalendarValue(final int columnIndex, final Class<?> type, final Calendar calendar) {
-        return currentRow.getValue().get(columnIndex - 1);
+        Object result = currentRow.getValue().get(columnIndex - 1);
+        wasNull = null == result;
+        return result;
     }
     
     @Override
     public final InputStream getInputStream(final int columnIndex, final String type) {
-        return getInputStream(currentRow.getValue().get(columnIndex - 1));
+        Object value = currentRow.getValue().get(columnIndex - 1);
+        wasNull = null == value;
+        return getInputStream(value);
     }
     
     @SneakyThrows(IOException.class)
@@ -90,8 +103,14 @@ public abstract class AbstractMemoryQueryResult implements QueryResult {
     }
     
     @Override
+    public Reader getCharacterStream(final int columnIndex) throws SQLException {
+        // TODO Support connection property character encoding
+        return new BufferedReader(new InputStreamReader(getInputStream(columnIndex)));
+    }
+    
+    @Override
     public final boolean wasNull() {
-        return null == currentRow;
+        return wasNull;
     }
     
     @Override

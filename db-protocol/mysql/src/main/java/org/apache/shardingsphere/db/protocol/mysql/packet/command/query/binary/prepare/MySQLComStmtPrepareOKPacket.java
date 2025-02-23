@@ -17,7 +17,6 @@
 
 package org.apache.shardingsphere.db.protocol.mysql.packet.command.query.binary.prepare;
 
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.apache.shardingsphere.db.protocol.mysql.packet.MySQLPacket;
 import org.apache.shardingsphere.db.protocol.mysql.payload.MySQLPacketPayload;
@@ -25,15 +24,12 @@ import org.apache.shardingsphere.db.protocol.mysql.payload.MySQLPacketPayload;
 /**
  * COM_STMT_PREPARE_OK packet for MySQL.
  * 
- * @see <a href="https://dev.mysql.com/doc/internals/en/com-stmt-prepare-response.html#packet-COM_STMT_PREPARE_OK">COM_STMT_PREPARE_OK</a>
+ * @see <a href="https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_com_stmt_prepare.html#sect_protocol_com_stmt_prepare_response_ok">COM_STMT_PREPARE_OK</a>
  */
 @RequiredArgsConstructor
-public final class MySQLComStmtPrepareOKPacket implements MySQLPacket {
+public final class MySQLComStmtPrepareOKPacket extends MySQLPacket {
     
     private static final int STATUS = 0x00;
-    
-    @Getter
-    private final int sequenceId;
     
     private final int statementId;
     
@@ -44,10 +40,10 @@ public final class MySQLComStmtPrepareOKPacket implements MySQLPacket {
     private final int warningCount;
     
     @Override
-    public void write(final MySQLPacketPayload payload) {
+    protected void write(final MySQLPacketPayload payload) {
         payload.writeInt1(STATUS);
         payload.writeInt4(statementId);
-        // TODO Column Definition Block should be added in future when the metadata of the columns is cached.
+        // TODO Column Definition Block should be added in future when the meta data of the columns is cached.
         payload.writeInt2(columnCount);
         payload.writeInt2(parameterCount);
         payload.writeReserved(1);

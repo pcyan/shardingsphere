@@ -26,36 +26,33 @@ import org.apache.shardingsphere.db.protocol.mysql.payload.MySQLPacketPayload;
 /**
  * EOF packet protocol for MySQL.
  * 
- * @see <a href="https://dev.mysql.com/doc/internals/en/packet-EOF_Packet.html">EOF Packet</a>
+ * @see <a href="https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_basic_eof_packet.html">EOF Packet</a>
  */
 @RequiredArgsConstructor
 @Getter
-public final class MySQLEofPacket implements MySQLPacket {
+public final class MySQLEofPacket extends MySQLPacket {
     
     /**
      * Header of EOF packet.
      */
     public static final int HEADER = 0xfe;
     
-    private final int sequenceId;
-    
     private final int warnings;
     
     private final int statusFlags;
     
-    public MySQLEofPacket(final int sequenceId, final int statusFlags) {
-        this(sequenceId, 0, statusFlags);
+    public MySQLEofPacket(final int statusFlags) {
+        this(0, statusFlags);
     }
     
     public MySQLEofPacket(final MySQLPacketPayload payload) {
-        sequenceId = payload.readInt1();
         Preconditions.checkArgument(HEADER == payload.readInt1(), "Header of MySQL EOF packet must be `0xfe`.");
         warnings = payload.readInt2();
         statusFlags = payload.readInt2();
     }
     
     @Override
-    public void write(final MySQLPacketPayload payload) {
+    protected void write(final MySQLPacketPayload payload) {
         payload.writeInt1(HEADER);
         payload.writeInt2(warnings);
         payload.writeInt2(statusFlags);

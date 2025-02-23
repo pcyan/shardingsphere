@@ -8,6 +8,7 @@ Increasing Apache ShardingSphere adoption across various industries, has allowed
 Our team has made numerous performance optimizations to the ShardingSphere Kernel, interface and etc. since the release of Version 5.0.0. This article introduces some of the performance optimizations at the code level, and showcases the optimized results of ShardingSphere-Proxy TPC-C benchmark tests.
 
 ## Optimizations
+
 **Correct the Use of Optional**
 
 java.util.Optional, introduced by Java 8, it makes the code cleaner. For example, it can avoid methods returningnull values. Optionalis commonly used in two situations:
@@ -59,8 +60,7 @@ Taking a frequently called ShardingSphere class `org.apache.shardingsphere.infra
         super(maxConnectionsSizePerQuery, rules);
         this.executorDriverManager = executorDriverManager;
         this.option = option;
-        sqlExecutionUnitBuilder = TYPE_TO_BUILDER_MAP.computeIfAbsent(type, 
-                key -> TypedSPIRegistry.getRegisteredService(SQLExecutionUnitBuilder.class, key, new Properties()));
+        sqlExecutionUnitBuilder = TYPE_TO_BUILDER_MAP.computeIfAbsent(type, key -> TypedSPILoader.getService(SQLExecutionUnitBuilder.class, key));
     }
 ```
 
@@ -69,7 +69,7 @@ In the code above, only two `type` will be passed into `computeIfAbsent`, and mo
 ```java
 SQLExecutionUnitBuilder result;
 if (null == (result = TYPE_TO_BUILDER_MAP.get(type))) {
-    result = TYPE_TO_BUILDER_MAP.computeIfAbsent(type, key -> TypedSPIRegistry.getRegisteredService(SQLExecutionUnitBuilder.class, key, new Properties()));
+    result = TYPE_TO_BUILDER_MAP.computeIfAbsent(type, key -> TypedSPILoader.getService(SQLExecutionUnitBuilder.class, key));
 }
 return result;
 ```
@@ -296,7 +296,7 @@ Moreover, ShardingSphere as an infrastructure, its performance is one of the key
 Apache ShardingSphere Open Source Project Links:
 [ShardingSphere Github](https://github.com/apache/shardingsphere)
 [ShardingSphere Twitter](https://twitter.com/ShardingSphere)
-[ShardingSphere Slack Channel](https://apacheshardingsphere.slack.com/ssb/redirect)
+[ShardingSphere Slack Channel](https://join.slack.com/t/apacheshardingsphere/shared_invite/zt-sbdde7ie-SjDqo9~I4rYcR18bq0SYTg)
 [Contributor Guide](https://shardingsphere.apache.org/community/cn/involved/)
 
 ### Author

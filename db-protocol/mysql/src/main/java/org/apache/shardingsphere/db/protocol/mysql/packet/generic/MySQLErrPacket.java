@@ -19,19 +19,19 @@ package org.apache.shardingsphere.db.protocol.mysql.packet.generic;
 
 import com.google.common.base.Preconditions;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import org.apache.shardingsphere.db.protocol.mysql.packet.MySQLPacket;
 import org.apache.shardingsphere.db.protocol.mysql.payload.MySQLPacketPayload;
-import org.apache.shardingsphere.infra.util.exception.external.sql.vendor.VendorError;
+import org.apache.shardingsphere.infra.exception.core.external.sql.vendor.VendorError;
+
+import java.sql.SQLException;
 
 /**
  * ERR packet protocol for MySQL.
  * 
- * @see <a href="https://dev.mysql.com/doc/internals/en/packet-ERR_Packet.html">ERR Packet</a>
+ * @see <a href="https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_basic_err_packet.html">ERR Packet</a>
  */
-@RequiredArgsConstructor
 @Getter
-public final class MySQLErrPacket implements MySQLPacket {
+public final class MySQLErrPacket extends MySQLPacket {
     
     /**
      * Header of ERR packet.
@@ -40,20 +40,25 @@ public final class MySQLErrPacket implements MySQLPacket {
     
     private static final String SQL_STATE_MARKER = "#";
     
-    private final int sequenceId;
-    
     private final int errorCode;
     
     private final String sqlState;
     
     private final String errorMessage;
     
-    public MySQLErrPacket(final int sequenceId, final VendorError vendorError, final Object... errorMessageArguments) {
-        this(sequenceId, vendorError.getVendorCode(), vendorError.getSqlState().getValue(), String.format(vendorError.getReason(), errorMessageArguments));
+    public MySQLErrPacket(final SQLException exception) {
+        errorCode = exception.getErrorCode();
+        sqlState = exception.getSQLState();
+        errorMessage = exception.getMessage();
+    }
+    
+    public MySQLErrPacket(final VendorError vendorError, final Object... errorMessageArgs) {
+        errorCode = vendorError.getVendorCode();
+        sqlState = vendorError.getSqlState().getValue();
+        errorMessage = String.format(vendorError.getReason(), errorMessageArgs);
     }
     
     public MySQLErrPacket(final MySQLPacketPayload payload) {
-        sequenceId = payload.readInt1();
         Preconditions.checkArgument(HEADER == payload.readInt1(), "Header of MySQL ERR packet must be `0xff`.");
         errorCode = payload.readInt2();
         payload.readStringFix(1);
@@ -62,13 +67,11 @@ public final class MySQLErrPacket implements MySQLPacket {
     }
     
     @Override
-    public void write(final MySQLPacketPayload payload) {
+    protected void write(final MySQLPacketPayload payload) {
         payload.writeInt1(HEADER);
         payload.writeInt2(errorCode);
-        if (0 != sequenceId) {
-            payload.writeStringFix(SQL_STATE_MARKER);
-            payload.writeStringFix(sqlState);
-        }
+        payload.writeStringFix(SQL_STATE_MARKER);
+        payload.writeStringFix(sqlState);
         payload.writeStringEOF(errorMessage);
     }
 }

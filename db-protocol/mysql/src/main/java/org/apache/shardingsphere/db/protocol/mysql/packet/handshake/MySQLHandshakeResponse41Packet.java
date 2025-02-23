@@ -23,19 +23,18 @@ import lombok.Setter;
 import org.apache.shardingsphere.db.protocol.mysql.constant.MySQLAuthenticationMethod;
 import org.apache.shardingsphere.db.protocol.mysql.constant.MySQLCapabilityFlag;
 import org.apache.shardingsphere.db.protocol.mysql.packet.MySQLPacket;
+import org.apache.shardingsphere.db.protocol.mysql.packet.command.admin.MySQLComSetOptionPacket;
 import org.apache.shardingsphere.db.protocol.mysql.payload.MySQLPacketPayload;
 
 /**
  * Handshake response above MySQL 4.1 packet protocol.
  * 
- * @see <a href="https://dev.mysql.com/doc/internals/en/connection-phase-packets.html#packet-Protocol::HandshakeResponse41">HandshakeResponse41</a>
+ * @see <a href="https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_connection_phase_packets_protocol_handshake_response.html">HandshakeResponse41</a>
  */
 @RequiredArgsConstructor
 @Getter
 @Setter
-public final class MySQLHandshakeResponse41Packet implements MySQLPacket {
-    
-    private final int sequenceId;
+public final class MySQLHandshakeResponse41Packet extends MySQLPacket {
     
     private final int maxPacketSize;
     
@@ -51,9 +50,11 @@ public final class MySQLHandshakeResponse41Packet implements MySQLPacket {
     
     private String authPluginName;
     
+    private int multiStatementsOption;
+    
     public MySQLHandshakeResponse41Packet(final MySQLPacketPayload payload) {
-        sequenceId = payload.readInt1();
         capabilityFlags = payload.readInt4();
+        multiStatementsOption = readMultiStatementsOption(capabilityFlags);
         maxPacketSize = payload.readInt4();
         characterSet = payload.readInt1();
         payload.skipReserved(23);
@@ -61,6 +62,11 @@ public final class MySQLHandshakeResponse41Packet implements MySQLPacket {
         authResponse = readAuthResponse(payload);
         database = readDatabase(payload);
         authPluginName = readAuthPluginName(payload);
+    }
+    
+    private int readMultiStatementsOption(final int capabilityFlags) {
+        return 0 == (capabilityFlags & MySQLCapabilityFlag.CLIENT_MULTI_STATEMENTS.getValue()) ? MySQLComSetOptionPacket.MYSQL_OPTION_MULTI_STATEMENTS_OFF
+                : MySQLComSetOptionPacket.MYSQL_OPTION_MULTI_STATEMENTS_ON;
     }
     
     private byte[] readAuthResponse(final MySQLPacketPayload payload) {
@@ -75,11 +81,11 @@ public final class MySQLHandshakeResponse41Packet implements MySQLPacket {
     }
     
     private String readDatabase(final MySQLPacketPayload payload) {
-        return 0 != (capabilityFlags & MySQLCapabilityFlag.CLIENT_CONNECT_WITH_DB.getValue()) ? payload.readStringNul() : null;
+        return 0 == (capabilityFlags & MySQLCapabilityFlag.CLIENT_CONNECT_WITH_DB.getValue()) ? null : payload.readStringNul();
     }
     
     private String readAuthPluginName(final MySQLPacketPayload payload) {
-        return 0 != (capabilityFlags & MySQLCapabilityFlag.CLIENT_PLUGIN_AUTH.getValue()) ? payload.readStringNul() : null;
+        return 0 == (capabilityFlags & MySQLCapabilityFlag.CLIENT_PLUGIN_AUTH.getValue()) ? null : payload.readStringNul();
     }
     
     /**
@@ -95,15 +101,15 @@ public final class MySQLHandshakeResponse41Packet implements MySQLPacket {
     /**
      * Set authentication plugin name.
      *
-     * @param mysqlAuthenticationMethod MySQL authentication method
+     * @param authenticationMethod authentication method of MySQL
      */
-    public void setAuthPluginName(final MySQLAuthenticationMethod mysqlAuthenticationMethod) {
-        authPluginName = mysqlAuthenticationMethod.getMethodName();
+    public void setAuthPluginName(final MySQLAuthenticationMethod authenticationMethod) {
+        authPluginName = authenticationMethod.getMethodName();
         capabilityFlags |= MySQLCapabilityFlag.CLIENT_PLUGIN_AUTH.getValue();
     }
     
     @Override
-    public void write(final MySQLPacketPayload payload) {
+    protected void write(final MySQLPacketPayload payload) {
         payload.writeInt4(capabilityFlags);
         payload.writeInt4(maxPacketSize);
         payload.writeInt1(characterSet);

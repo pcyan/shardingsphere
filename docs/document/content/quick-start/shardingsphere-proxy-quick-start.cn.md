@@ -30,9 +30,9 @@ ShardingSphere-Proxy 对系统库/表（如 information_schema、pg_catalog）�
 
 2. 规则配置
 
-编辑 `%SHARDINGSPHERE_PROXY_HOME%/conf/server.yaml`。
+编辑 `%SHARDINGSPHERE_PROXY_HOME%/conf/global.yaml`。
 
-编辑 `%SHARDINGSPHERE_PROXY_HOME%/conf/config-xxx.yaml`。
+编辑 `%SHARDINGSPHERE_PROXY_HOME%/conf/database-xxx.yaml`。
 
 > %SHARDINGSPHERE_PROXY_HOME% 为 Proxy 解压后的路径，例：`/opt/shardingsphere-proxy-bin/`
 
@@ -42,7 +42,7 @@ ShardingSphere-Proxy 对系统库/表（如 information_schema、pg_catalog）�
 
 如果后端连接 PostgreSQL 或 openGauss 数据库，不需要引入额外依赖。
 
-如果后端连接 MySQL 数据库，请下载 [mysql-connector-java-5.1.47.jar](https://repo1.maven.org/maven2/mysql/mysql-connector-java/5.1.47/mysql-connector-java-5.1.47.jar) 或者 [mysql-connector-java-8.0.11.jar](https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.11/mysql-connector-java-8.0.11.jar)，并将其放入 `%SHARDINGSPHERE_PROXY_HOME%/ext-lib` 目录。
+如果后端连接 MySQL 数据库，请下载 [mysql-connector-java-5.1.49.jar](https://repo1.maven.org/maven2/mysql/mysql-connector-java/5.1.49/mysql-connector-java-5.1.49.jar) 或者 [mysql-connector-java-8.0.11.jar](https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.11/mysql-connector-java-8.0.11.jar)，并将其放入 `%SHARDINGSPHERE_PROXY_HOME%/ext-lib` 目录。
 
 4. 启动服务
 

@@ -17,21 +17,19 @@
 
 package org.apache.shardingsphere.infra.executor.sql.hook.fixture;
 
+import org.apache.shardingsphere.infra.database.core.connector.ConnectionProperties;
 import org.apache.shardingsphere.infra.executor.sql.hook.SQLExecutionHook;
-import org.apache.shardingsphere.infra.database.metadata.DataSourceMetaData;
 
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 public final class SQLExecutionHookFixture implements SQLExecutionHook {
     
     private static final Collection<String> ACTIONS = new LinkedList<>();
     
     @Override
-    public void start(final String dataSourceName, final String sql, final List<Object> parameters,
-                      final DataSourceMetaData dataSourceMetaData, final boolean isTrunkThread, final Map<String, Object> shardingExecuteDataMap) {
+    public void start(final String dataSourceName, final String sql, final List<Object> params, final ConnectionProperties connectionProps, final boolean isTrunkThread) {
         ACTIONS.add("start");
     }
     
@@ -47,7 +45,7 @@ public final class SQLExecutionHookFixture implements SQLExecutionHook {
     
     /**
      * Contains action or not.
-     * 
+     *
      * @param action action
      * @return contains action or not
      */

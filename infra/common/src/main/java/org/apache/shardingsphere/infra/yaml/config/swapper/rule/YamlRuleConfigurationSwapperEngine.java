@@ -18,6 +18,7 @@
 package org.apache.shardingsphere.infra.yaml.config.swapper.rule;
 
 import org.apache.shardingsphere.infra.config.rule.RuleConfiguration;
+import org.apache.shardingsphere.infra.spi.type.ordered.OrderedSPILoader;
 import org.apache.shardingsphere.infra.yaml.config.pojo.rule.YamlRuleConfiguration;
 
 import java.util.Collection;
@@ -32,6 +33,18 @@ import java.util.stream.Collectors;
 public final class YamlRuleConfigurationSwapperEngine {
     
     /**
+     * Swap to YAML rule configuration.
+     *
+     * @param ruleConfig rule configuration
+     * @return YAML rule configuration
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public YamlRuleConfiguration swapToYamlRuleConfiguration(final RuleConfiguration ruleConfig) {
+        YamlRuleConfigurationSwapper yamlSwapper = OrderedSPILoader.getServices(YamlRuleConfigurationSwapper.class, Collections.singleton(ruleConfig)).get(ruleConfig);
+        return (YamlRuleConfiguration) yamlSwapper.swapToYamlConfiguration(ruleConfig);
+    }
+    
+    /**
      * Swap to YAML rule configurations.
      *
      * @param ruleConfigs rule configurations
@@ -39,8 +52,21 @@ public final class YamlRuleConfigurationSwapperEngine {
      */
     @SuppressWarnings("unchecked")
     public Collection<YamlRuleConfiguration> swapToYamlRuleConfigurations(final Collection<RuleConfiguration> ruleConfigs) {
-        return YamlRuleConfigurationSwapperFactory.getInstanceMapByRuleConfigurations(ruleConfigs).entrySet().stream()
+        return OrderedSPILoader.getServices(YamlRuleConfigurationSwapper.class, ruleConfigs).entrySet().stream()
                 .map(entry -> (YamlRuleConfiguration) entry.getValue().swapToYamlConfiguration(entry.getKey())).collect(Collectors.toList());
+    }
+    
+    /**
+     * Swap from YAML rule configurations to rule configuration.
+     *
+     * @param yamlRuleConfig YAML rule configuration
+     * @return rule configuration
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public RuleConfiguration swapToRuleConfiguration(final YamlRuleConfiguration yamlRuleConfig) {
+        Class<?> ruleConfigType = yamlRuleConfig.getRuleConfigurationType();
+        YamlRuleConfigurationSwapper swapper = OrderedSPILoader.getServicesByClass(YamlRuleConfigurationSwapper.class, Collections.singleton(ruleConfigType)).get(ruleConfigType);
+        return (RuleConfiguration) swapper.swapToObject(yamlRuleConfig);
     }
     
     /**
@@ -53,7 +79,7 @@ public final class YamlRuleConfigurationSwapperEngine {
     public Collection<RuleConfiguration> swapToRuleConfigurations(final Collection<YamlRuleConfiguration> yamlRuleConfigs) {
         Collection<RuleConfiguration> result = new LinkedList<>();
         Collection<Class<?>> ruleConfigTypes = yamlRuleConfigs.stream().map(YamlRuleConfiguration::getRuleConfigurationType).collect(Collectors.toList());
-        for (Entry<Class<?>, YamlRuleConfigurationSwapper> entry : YamlRuleConfigurationSwapperFactory.getInstanceMapByRuleConfigurationClasses(ruleConfigTypes).entrySet()) {
+        for (Entry<Class<?>, YamlRuleConfigurationSwapper> entry : OrderedSPILoader.getServicesByClass(YamlRuleConfigurationSwapper.class, ruleConfigTypes).entrySet()) {
             result.addAll(swapToRuleConfigurations(yamlRuleConfigs, entry.getKey(), entry.getValue()));
         }
         return result;
@@ -64,18 +90,5 @@ public final class YamlRuleConfigurationSwapperEngine {
                                                                    final Class<?> ruleConfigType, final YamlRuleConfigurationSwapper swapper) {
         return yamlRuleConfigs.stream()
                 .filter(each -> each.getRuleConfigurationType().equals(ruleConfigType)).map(each -> (RuleConfiguration) swapper.swapToObject(each)).collect(Collectors.toList());
-    }
-    
-    /**
-     * Swap from YAML rule configuration to rule configuration.
-     *
-     * @param yamlRuleConfig YAML rule configuration
-     * @return rule configuration
-     */
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public RuleConfiguration swapToRuleConfiguration(final YamlRuleConfiguration yamlRuleConfig) {
-        Collection<Class<?>> types = Collections.singletonList(yamlRuleConfig.getRuleConfigurationType());
-        YamlRuleConfigurationSwapper swapper = YamlRuleConfigurationSwapperFactory.getInstanceMapByRuleConfigurationClasses(types).get(yamlRuleConfig.getRuleConfigurationType());
-        return (RuleConfiguration) swapper.swapToObject(yamlRuleConfig);
     }
 }

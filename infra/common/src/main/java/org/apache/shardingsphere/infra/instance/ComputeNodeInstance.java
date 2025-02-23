@@ -18,61 +18,48 @@
 package org.apache.shardingsphere.infra.instance;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.apache.shardingsphere.infra.instance.metadata.InstanceMetaData;
-import org.apache.shardingsphere.infra.state.StateContext;
-import org.apache.shardingsphere.infra.state.StateType;
+import org.apache.shardingsphere.infra.state.instance.InstanceState;
+import org.apache.shardingsphere.infra.state.instance.InstanceStateContext;
 
-import java.util.ArrayList;
+import javax.annotation.concurrent.ThreadSafe;
 import java.util.Collection;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Instance of compute node.
  */
+@RequiredArgsConstructor
 @Getter
-@Setter
+@ThreadSafe
 public final class ComputeNodeInstance {
     
     private final InstanceMetaData metaData;
     
-    private final StateContext state = new StateContext();
+    private final InstanceStateContext state = new InstanceStateContext();
     
-    private Collection<String> labels = new ArrayList<>();
+    private final Collection<String> labels = new CopyOnWriteArrayList<>();
     
-    private volatile long workerId;
+    @Setter
+    private volatile int workerId = -1;
     
-    public ComputeNodeInstance(final InstanceMetaData metaData) {
+    public ComputeNodeInstance(final InstanceMetaData metaData, final Collection<String> labels) {
         this.metaData = metaData;
-        workerId = -1L;
-    }
-    
-    /**
-     * Set labels.
-     *
-     * @param labels labels
-     */
-    public void setLabels(final Collection<String> labels) {
-        if (null == labels) {
-            return;
-        }
-        this.labels = labels;
+        this.labels.addAll(labels);
     }
     
     /**
      * Switch state.
      *
-     * @param status status
+     * @param state instance state
      */
-    public void switchState(final Collection<String> status) {
-        state.switchState(StateType.CIRCUIT_BREAK, null != status && status.contains(StateType.CIRCUIT_BREAK.name()));
-    }
-    
-    /**
-     * Get current instance id.
-     *
-     * @return current instance id
-     */
-    public String getCurrentInstanceId() {
-        return metaData.getId();
+    public void switchState(final InstanceState state) {
+        if (InstanceState.CIRCUIT_BREAK == state) {
+            this.state.switchState(state);
+        } else {
+            this.state.recoverState(InstanceState.CIRCUIT_BREAK);
+        }
     }
 }

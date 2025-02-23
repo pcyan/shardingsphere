@@ -17,17 +17,21 @@
 
 package org.apache.shardingsphere.data.pipeline.core.exception.data;
 
-import org.apache.shardingsphere.data.pipeline.core.exception.PipelineSQLException;
-import org.apache.shardingsphere.infra.util.exception.external.sql.sqlstate.XOpenSQLState;
+import org.apache.shardingsphere.infra.exception.core.external.sql.sqlstate.XOpenSQLState;
+import org.apache.shardingsphere.infra.metadata.database.schema.QualifiedTable;
 
 /**
  * Pipeline table data consistency check loading failed exception.
  */
-public final class PipelineTableDataConsistencyCheckLoadingFailedException extends PipelineSQLException {
+public final class PipelineTableDataConsistencyCheckLoadingFailedException extends PipelineDataException {
     
     private static final long serialVersionUID = 8965231249677009738L;
     
-    public PipelineTableDataConsistencyCheckLoadingFailedException(final String tableName) {
-        super(XOpenSQLState.CONNECTION_EXCEPTION, 51, "Data check table `%s` failed.", tableName);
+    public PipelineTableDataConsistencyCheckLoadingFailedException(final QualifiedTable qualifiedTable) {
+        this(qualifiedTable, null);
+    }
+    
+    public PipelineTableDataConsistencyCheckLoadingFailedException(final QualifiedTable qualifiedTable, final Exception cause) {
+        super(XOpenSQLState.CONNECTION_EXCEPTION, 1, String.format("Data check table '%s' failed.", qualifiedTable), cause);
     }
 }

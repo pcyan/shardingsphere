@@ -24,29 +24,45 @@ public interface InstanceMetaData {
     
     /**
      * Get instance ID.
-     * 
+     *
      * @return instance ID
      */
     String getId();
     
     /**
      * Get instance type.
-     * 
+     *
      * @return instance type
      */
     InstanceType getType();
     
     /**
      * Get IP.
-     * 
+     *
      * @return IP
      */
     String getIp();
     
     /**
      * Get attributes.
-     * 
+     *
      * @return attributes
      */
     String getAttributes();
+    
+    /**
+     * Get version.
+     *
+     * @return version
+     */
+    String getVersion();
+    
+    /**
+     * Get database name.
+     *
+     * @return database name
+     */
+    default String getDatabaseName() {
+        return "";
+    }
 }

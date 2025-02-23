@@ -19,8 +19,8 @@ package org.apache.shardingsphere.infra.route.context;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.ToString;
+import org.apache.shardingsphere.infra.exception.core.ShardingSpherePreconditions;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -31,7 +31,6 @@ import java.util.stream.Collectors;
 /**
  * Route unit.
  */
-@RequiredArgsConstructor
 @Getter
 @EqualsAndHashCode
 @ToString
@@ -41,13 +40,20 @@ public final class RouteUnit {
     
     private final Collection<RouteMapper> tableMappers;
     
+    public RouteUnit(final RouteMapper dataSourceMapper, final Collection<RouteMapper> tableMappers) {
+        ShardingSpherePreconditions.checkNotNull(dataSourceMapper, () -> new IllegalArgumentException("`dataSourceMapper` is required"));
+        ShardingSpherePreconditions.checkNotNull(tableMappers, () -> new IllegalArgumentException("`tableMappers` is required"));
+        this.dataSourceMapper = dataSourceMapper;
+        this.tableMappers = tableMappers;
+    }
+    
     /**
      * Get logic table names.
      *
      * @return logic table names
      */
     public Set<String> getLogicTableNames() {
-        return tableMappers.stream().map(RouteMapper::getLogicName).collect(Collectors.toCollection(() -> new HashSet<>(tableMappers.size(), 1)));
+        return tableMappers.stream().map(RouteMapper::getLogicName).collect(Collectors.toCollection(() -> new HashSet<>(tableMappers.size(), 1L)));
     }
     
     /**

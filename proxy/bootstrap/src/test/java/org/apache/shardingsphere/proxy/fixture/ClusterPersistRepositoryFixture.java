@@ -17,54 +17,29 @@
 
 package org.apache.shardingsphere.proxy.fixture;
 
-import org.apache.shardingsphere.infra.instance.metadata.InstanceMetaData;
+import org.apache.shardingsphere.infra.instance.ComputeNodeInstanceContext;
 import org.apache.shardingsphere.mode.repository.cluster.ClusterPersistRepository;
 import org.apache.shardingsphere.mode.repository.cluster.ClusterPersistRepositoryConfiguration;
 import org.apache.shardingsphere.mode.repository.cluster.listener.DataChangedEventListener;
+import org.apache.shardingsphere.mode.repository.cluster.lock.holder.DistributedLockHolder;
+import org.apache.shardingsphere.mode.repository.cluster.lock.impl.props.DefaultLockTypedProperties;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executor;
+import java.util.Properties;
 
 public final class ClusterPersistRepositoryFixture implements ClusterPersistRepository {
     
     private static final Map<String, String> REGISTRY_DATA = new LinkedHashMap<>();
     
     @Override
-    public void init(final ClusterPersistRepositoryConfiguration config, final InstanceMetaData instanceMetaData) {
+    public void init(final ClusterPersistRepositoryConfiguration config, final ComputeNodeInstanceContext computeNodeInstanceContext) {
     }
     
     @Override
-    public int getNumChildren(final String key) {
-        return 0;
-    }
-    
-    @Override
-    public void addCacheData(final String cachePath) {
-    }
-    
-    @Override
-    public void evictCacheData(final String cachePath) {
-    }
-    
-    @Override
-    public Object getRawCache(final String cachePath) {
-        return null;
-    }
-    
-    @Override
-    public void updateInTransaction(final String key, final String value) {
-    }
-    
-    @Override
-    public String get(final String key) {
-        return null;
-    }
-    
-    @Override
-    public String getDirectly(final String key) {
+    public String query(final String key) {
         return REGISTRY_DATA.get(key);
     }
     
@@ -93,7 +68,13 @@ public final class ClusterPersistRepositoryFixture implements ClusterPersistRepo
     }
     
     @Override
-    public void persistExclusiveEphemeral(final String key, final String value) {
+    public boolean persistExclusiveEphemeral(final String key, final String value) {
+        return true;
+    }
+    
+    @Override
+    public DistributedLockHolder getDistributedLockHolder() {
+        return new DistributedLockHolder("default", this, new DefaultLockTypedProperties(new Properties()));
     }
     
     @Override
@@ -101,26 +82,11 @@ public final class ClusterPersistRepositoryFixture implements ClusterPersistRepo
     }
     
     @Override
-    public long getRegistryCenterTime(final String key) {
-        return 0;
+    public void watch(final String key, final DataChangedEventListener listener) {
     }
     
     @Override
-    public Object getRawClient() {
-        return null;
-    }
-    
-    @Override
-    public void watch(final String key, final DataChangedEventListener listener, final Executor executor) {
-    }
-    
-    @Override
-    public boolean tryLock(final String lockKey, final long timeoutMillis) {
-        return false;
-    }
-    
-    @Override
-    public void unlock(final String lockKey) {
+    public void removeDataListener(final String key) {
     }
     
     @Override

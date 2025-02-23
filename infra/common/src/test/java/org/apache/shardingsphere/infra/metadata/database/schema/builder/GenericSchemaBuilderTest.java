@@ -18,20 +18,25 @@
 package org.apache.shardingsphere.infra.metadata.database.schema.builder;
 
 import org.apache.shardingsphere.infra.config.props.ConfigurationProperties;
-import org.apache.shardingsphere.infra.database.DefaultDatabase;
-import org.apache.shardingsphere.infra.database.type.DatabaseType;
-import org.apache.shardingsphere.infra.metadata.database.schema.decorator.model.ShardingSphereSchema;
-import org.apache.shardingsphere.infra.metadata.database.schema.decorator.model.ShardingSphereTable;
-import org.apache.shardingsphere.infra.metadata.database.schema.fixture.rule.TableContainedFixtureRule;
-import org.apache.shardingsphere.infra.metadata.database.schema.loader.SchemaMetaDataLoaderEngine;
-import org.apache.shardingsphere.infra.metadata.database.schema.loader.model.SchemaMetaData;
-import org.apache.shardingsphere.infra.metadata.database.schema.loader.model.TableMetaData;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.MockedStatic;
+import org.apache.shardingsphere.infra.database.core.metadata.data.loader.MetaDataLoader;
+import org.apache.shardingsphere.infra.database.core.metadata.data.model.SchemaMetaData;
+import org.apache.shardingsphere.infra.database.core.metadata.data.model.TableMetaData;
+import org.apache.shardingsphere.infra.database.core.type.DatabaseType;
+import org.apache.shardingsphere.infra.metadata.database.resource.unit.StorageUnit;
+import org.apache.shardingsphere.infra.metadata.database.schema.model.ShardingSphereSchema;
+import org.apache.shardingsphere.infra.rule.ShardingSphereRule;
+import org.apache.shardingsphere.infra.rule.attribute.RuleAttributes;
+import org.apache.shardingsphere.infra.rule.attribute.table.TableMapperRuleAttribute;
+import org.apache.shardingsphere.infra.spi.type.typed.TypedSPILoader;
+import org.apache.shardingsphere.test.fixture.jdbc.MockedDataSource;
+import org.apache.shardingsphere.test.mock.AutoMockExtension;
+import org.apache.shardingsphere.test.mock.StaticMockSettings;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
-import javax.sql.DataSource;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collection;
@@ -42,52 +47,52 @@ import java.util.stream.Collectors;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
-public final class GenericSchemaBuilderTest {
+@ExtendWith(AutoMockExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
+@StaticMockSettings(MetaDataLoader.class)
+class GenericSchemaBuilderTest {
+    
+    private final DatabaseType databaseType = TypedSPILoader.getService(DatabaseType.class, "FIXTURE");
     
     private GenericSchemaBuilderMaterial material;
     
-    private MockedStatic<SchemaMetaDataLoaderEngine> engine;
-    
-    @Before
-    public void setUp() {
-        DatabaseType databaseType = mock(DatabaseType.class);
-        material = new GenericSchemaBuilderMaterial(databaseType, Collections.emptyMap(), Collections.singletonMap(DefaultDatabase.LOGIC_NAME, mock(DataSource.class)),
-                Collections.singleton(new TableContainedFixtureRule()), new ConfigurationProperties(new Properties()), DefaultDatabase.LOGIC_NAME);
-        engine = mockStatic(SchemaMetaDataLoaderEngine.class);
-    }
-    
-    @After
-    public void cleanUp() {
-        engine.close();
+    @BeforeEach
+    void setUp() {
+        ShardingSphereRule rule = mock(ShardingSphereRule.class);
+        when(rule.getAttributes()).thenReturn(new RuleAttributes(mock(TableMapperRuleAttribute.class)));
+        StorageUnit storageUnit = mock(StorageUnit.class);
+        when(storageUnit.getStorageType()).thenReturn(databaseType);
+        when(storageUnit.getDataSource()).thenReturn(new MockedDataSource());
+        material = new GenericSchemaBuilderMaterial(Collections.singletonMap("foo_schema", storageUnit), Collections.singleton(rule), new ConfigurationProperties(new Properties()), "foo_schema");
     }
     
     @Test
-    public void assertLoadWithExistedTableName() throws SQLException {
+    void assertLoadWithExistedTableName() throws SQLException {
         Collection<String> tableNames = Collections.singletonList("data_node_routed_table1");
-        engine.when(() -> SchemaMetaDataLoaderEngine.load(any())).thenReturn(createSchemaMetaDataMap(tableNames, material));
-        assertFalse(GenericSchemaBuilder.build(tableNames, material).get(DefaultDatabase.LOGIC_NAME).getTables().isEmpty());
+        when(MetaDataLoader.load(any())).thenReturn(createSchemaMetaDataMap(tableNames, material));
+        assertFalse(GenericSchemaBuilder.build(tableNames, databaseType, material).get("foo_schema").getAllTables().isEmpty());
     }
     
     @Test
-    public void assertLoadWithNotExistedTableName() throws SQLException {
+    void assertLoadWithNotExistedTableName() throws SQLException {
         Collection<String> tableNames = Collections.singletonList("invalid_table");
-        engine.when(() -> SchemaMetaDataLoaderEngine.load(any())).thenReturn(createSchemaMetaDataMap(tableNames, material));
-        assertTrue(GenericSchemaBuilder.build(tableNames, material).get(DefaultDatabase.LOGIC_NAME).getTables().isEmpty());
+        when(MetaDataLoader.load(any())).thenReturn(createSchemaMetaDataMap(tableNames, material));
+        assertTrue(GenericSchemaBuilder.build(tableNames, databaseType, material).get("foo_schema").getAllTables().isEmpty());
     }
     
     @Test
-    public void assertLoadAllTables() throws SQLException {
+    void assertLoadAllTables() throws SQLException {
         Collection<String> tableNames = Arrays.asList("data_node_routed_table1", "data_node_routed_table2");
-        engine.when(() -> SchemaMetaDataLoaderEngine.load(any())).thenReturn(createSchemaMetaDataMap(tableNames, material));
-        Map<String, ShardingSphereSchema> actual = GenericSchemaBuilder.build(tableNames, material);
+        when(MetaDataLoader.load(any())).thenReturn(createSchemaMetaDataMap(tableNames, material));
+        Map<String, ShardingSphereSchema> actual = GenericSchemaBuilder.build(tableNames, databaseType, material);
         assertThat(actual.size(), is(1));
-        assertTables(new ShardingSphereSchema(actual.values().iterator().next().getTables(), Collections.emptyMap()).getTables());
+        assertTables(new ShardingSphereSchema("foo_schema", actual.values().iterator().next().getAllTables(), Collections.emptyList()));
     }
     
     private Map<String, SchemaMetaData> createSchemaMetaDataMap(final Collection<String> tableNames, final GenericSchemaBuilderMaterial material) {
@@ -99,9 +104,9 @@ public final class GenericSchemaBuilderTest {
         return Collections.emptyMap();
     }
     
-    private void assertTables(final Map<String, ShardingSphereTable> actual) {
-        assertThat(actual.size(), is(2));
-        assertTrue(actual.get("data_node_routed_table1").getColumns().isEmpty());
-        assertTrue(actual.get("data_node_routed_table2").getColumns().isEmpty());
+    private void assertTables(final ShardingSphereSchema actual) {
+        assertThat(actual.getAllTables().size(), is(2));
+        assertTrue(actual.getTable("data_node_routed_table1").getAllColumns().isEmpty());
+        assertTrue(actual.getTable("data_node_routed_table2").getAllColumns().isEmpty());
     }
 }

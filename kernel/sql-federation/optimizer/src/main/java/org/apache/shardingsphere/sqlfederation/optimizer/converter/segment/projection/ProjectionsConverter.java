@@ -17,17 +17,20 @@
 
 package org.apache.shardingsphere.sqlfederation.optimizer.converter.segment.projection;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlNodeList;
 import org.apache.calcite.sql.parser.SqlParserPos;
-import org.apache.shardingsphere.sql.parser.sql.common.segment.dml.item.AggregationProjectionSegment;
-import org.apache.shardingsphere.sql.parser.sql.common.segment.dml.item.ColumnProjectionSegment;
-import org.apache.shardingsphere.sql.parser.sql.common.segment.dml.item.ExpressionProjectionSegment;
-import org.apache.shardingsphere.sql.parser.sql.common.segment.dml.item.ProjectionSegment;
-import org.apache.shardingsphere.sql.parser.sql.common.segment.dml.item.ProjectionsSegment;
-import org.apache.shardingsphere.sql.parser.sql.common.segment.dml.item.ShorthandProjectionSegment;
-import org.apache.shardingsphere.sql.parser.sql.common.segment.dml.item.SubqueryProjectionSegment;
-import org.apache.shardingsphere.sqlfederation.optimizer.converter.segment.SQLSegmentConverter;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.simple.ParameterMarkerExpressionSegment;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.dml.item.AggregationProjectionSegment;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.dml.item.ColumnProjectionSegment;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.dml.item.ExpressionProjectionSegment;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.dml.item.ProjectionSegment;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.dml.item.ProjectionsSegment;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.dml.item.ShorthandProjectionSegment;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.dml.item.SubqueryProjectionSegment;
+import org.apache.shardingsphere.sqlfederation.optimizer.converter.segment.expression.impl.ParameterMarkerExpressionConverter;
 import org.apache.shardingsphere.sqlfederation.optimizer.converter.segment.projection.impl.AggregationProjectionConverter;
 import org.apache.shardingsphere.sqlfederation.optimizer.converter.segment.projection.impl.ColumnProjectionConverter;
 import org.apache.shardingsphere.sqlfederation.optimizer.converter.segment.projection.impl.ExpressionProjectionConverter;
@@ -41,10 +44,16 @@ import java.util.Optional;
 /**
  * Projection converter.
  */
-public final class ProjectionsConverter implements SQLSegmentConverter<ProjectionsSegment, SqlNodeList> {
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public final class ProjectionsConverter {
     
-    @Override
-    public Optional<SqlNodeList> convert(final ProjectionsSegment segment) {
+    /**
+     * Convert projections segment to sql node list.
+     *
+     * @param segment projections segment
+     * @return sql node list
+     */
+    public static Optional<SqlNodeList> convert(final ProjectionsSegment segment) {
         Collection<SqlNode> projectionSQLNodes = new LinkedList<>();
         for (ProjectionSegment each : segment.getProjections()) {
             getProjectionSQLNode(each).ifPresent(projectionSQLNodes::add);
@@ -52,21 +61,24 @@ public final class ProjectionsConverter implements SQLSegmentConverter<Projectio
         return Optional.of(new SqlNodeList(projectionSQLNodes, SqlParserPos.ZERO));
     }
     
-    private Optional<SqlNode> getProjectionSQLNode(final ProjectionSegment segment) {
+    private static Optional<SqlNode> getProjectionSQLNode(final ProjectionSegment segment) {
         if (segment instanceof ColumnProjectionSegment) {
-            return new ColumnProjectionConverter().convert((ColumnProjectionSegment) segment);
+            return ColumnProjectionConverter.convert((ColumnProjectionSegment) segment);
         }
         if (segment instanceof ExpressionProjectionSegment) {
-            return new ExpressionProjectionConverter().convert((ExpressionProjectionSegment) segment);
+            return ExpressionProjectionConverter.convert((ExpressionProjectionSegment) segment);
         }
         if (segment instanceof ShorthandProjectionSegment) {
-            return new ShorthandProjectionConverter().convert((ShorthandProjectionSegment) segment);
+            return ShorthandProjectionConverter.convert((ShorthandProjectionSegment) segment);
         }
         if (segment instanceof SubqueryProjectionSegment) {
-            return new SubqueryProjectionConverter().convert((SubqueryProjectionSegment) segment);
+            return SubqueryProjectionConverter.convert((SubqueryProjectionSegment) segment);
         }
         if (segment instanceof AggregationProjectionSegment) {
-            return new AggregationProjectionConverter().convert((AggregationProjectionSegment) segment);
+            return AggregationProjectionConverter.convert((AggregationProjectionSegment) segment);
+        }
+        if (segment instanceof ParameterMarkerExpressionSegment) {
+            return ParameterMarkerExpressionConverter.convert((ParameterMarkerExpressionSegment) segment);
         }
         // TODO process other projection
         return Optional.empty();

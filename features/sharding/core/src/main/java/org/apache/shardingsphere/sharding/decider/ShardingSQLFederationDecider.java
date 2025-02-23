@@ -17,68 +17,57 @@
 
 package org.apache.shardingsphere.sharding.decider;
 
-import org.apache.shardingsphere.infra.binder.QueryContext;
-import org.apache.shardingsphere.infra.binder.decider.SQLFederationDecider;
-import org.apache.shardingsphere.infra.binder.decider.context.SQLFederationDeciderContext;
-import org.apache.shardingsphere.infra.binder.statement.dml.SelectStatementContext;
-import org.apache.shardingsphere.infra.config.props.ConfigurationProperties;
-import org.apache.shardingsphere.infra.database.type.dialect.OpenGaussDatabaseType;
-import org.apache.shardingsphere.infra.database.type.dialect.PostgreSQLDatabaseType;
+import org.apache.shardingsphere.infra.annotation.HighFrequencyInvocation;
+import org.apache.shardingsphere.infra.binder.context.statement.dml.SelectStatementContext;
+import org.apache.shardingsphere.infra.datanode.DataNode;
+import org.apache.shardingsphere.infra.datanode.DataNodes;
 import org.apache.shardingsphere.infra.metadata.database.ShardingSphereDatabase;
+import org.apache.shardingsphere.infra.metadata.database.rule.RuleMetaData;
 import org.apache.shardingsphere.sharding.constant.ShardingOrder;
-import org.apache.shardingsphere.sharding.route.engine.condition.ShardingCondition;
-import org.apache.shardingsphere.sharding.route.engine.condition.ShardingConditions;
-import org.apache.shardingsphere.sharding.route.engine.condition.engine.ShardingConditionEngine;
-import org.apache.shardingsphere.sharding.route.engine.condition.engine.ShardingConditionEngineFactory;
 import org.apache.shardingsphere.sharding.rule.ShardingRule;
+import org.apache.shardingsphere.sqlfederation.spi.SQLFederationDecider;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 
 /**
  * Sharding SQL federation decider.
  */
+@HighFrequencyInvocation
 public final class ShardingSQLFederationDecider implements SQLFederationDecider<ShardingRule> {
     
     @Override
-    public void decide(final SQLFederationDeciderContext deciderContext, final QueryContext queryContext,
-                       final ShardingSphereDatabase database, final ShardingRule rule, final ConfigurationProperties props) {
-        SelectStatementContext select = (SelectStatementContext) queryContext.getSqlStatementContext();
-        Collection<String> tableNames = rule.getShardingLogicTableNames(select.getTablesContext().getTableNames());
+    public boolean decide(final SelectStatementContext selectStatementContext, final List<Object> parameters,
+                          final RuleMetaData globalRuleMetaData, final ShardingSphereDatabase database, final ShardingRule rule, final Collection<DataNode> includedDataNodes) {
+        Collection<String> tableNames = rule.getShardingLogicTableNames(selectStatementContext.getTablesContext().getTableNames());
         if (tableNames.isEmpty()) {
-            return;
+            return false;
         }
-        addTableDataNodes(deciderContext, rule, tableNames);
-        ShardingConditions shardingConditions = createShardingConditions(queryContext, database, rule);
-        // TODO remove this judge logic when we support issue#21392
-        if (select.getPaginationContext().isHasPagination() && !(select.getDatabaseType() instanceof PostgreSQLDatabaseType) && !(select.getDatabaseType() instanceof OpenGaussDatabaseType)) {
-            return;
+        includedDataNodes.addAll(getTableDataNodes(rule, database, tableNames));
+        if (selectStatementContext.isContainsSubquery() || selectStatementContext.isContainsHaving()
+                || selectStatementContext.isContainsCombine() || selectStatementContext.isContainsPartialDistinctAggregation()) {
+            return true;
         }
-        if (shardingConditions.isNeedMerge() && shardingConditions.isSameShardingCondition()) {
-            return;
+        if (!selectStatementContext.isContainsJoinQuery() || rule.isAllTablesInSameDataSource(tableNames)) {
+            return false;
         }
-        if (select.isContainsSubquery() || select.isContainsHaving() || select.isContainsCombine() || select.isContainsPartialDistinctAggregation()) {
-            deciderContext.setUseSQLFederation(true);
-            return;
+        if (isSelfJoinWithoutShardingColumn(selectStatementContext, rule, tableNames)) {
+            return true;
         }
-        if (!select.isContainsJoinQuery() || rule.isAllTablesInSameDataSource(tableNames)) {
-            return;
-        }
-        boolean allBindingTables = tableNames.size() > 1 && rule.isAllBindingTables(database, select, tableNames);
-        deciderContext.setUseSQLFederation(tableNames.size() > 1 && !allBindingTables);
+        return tableNames.size() > 1 && !rule.isBindingTablesUseShardingColumnsJoin(selectStatementContext, tableNames);
     }
     
-    private static void addTableDataNodes(final SQLFederationDeciderContext deciderContext, final ShardingRule rule, final Collection<String> tableNames) {
+    private boolean isSelfJoinWithoutShardingColumn(final SelectStatementContext selectStatementContext, final ShardingRule rule, final Collection<String> tableNames) {
+        return 1 == tableNames.size() && selectStatementContext.isContainsJoinQuery() && !rule.isBindingTablesUseShardingColumnsJoin(selectStatementContext, tableNames);
+    }
+    
+    private Collection<DataNode> getTableDataNodes(final ShardingRule rule, final ShardingSphereDatabase database, final Collection<String> tableNames) {
+        Collection<DataNode> result = new HashSet<>();
         for (String each : tableNames) {
-            rule.findTableRule(each).ifPresent(optional -> deciderContext.getDataNodes().addAll(optional.getActualDataNodes()));
+            rule.findShardingTable(each).ifPresent(optional -> result.addAll(new DataNodes(database.getRuleMetaData().getRules()).getDataNodes(each)));
         }
-    }
-    
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static ShardingConditions createShardingConditions(final QueryContext queryContext, final ShardingSphereDatabase database, final ShardingRule rule) {
-        ShardingConditionEngine shardingConditionEngine = ShardingConditionEngineFactory.createShardingConditionEngine(queryContext, database, rule);
-        List<ShardingCondition> shardingConditions = shardingConditionEngine.createShardingConditions(queryContext.getSqlStatementContext(), queryContext.getParameters());
-        return new ShardingConditions(shardingConditions, queryContext.getSqlStatementContext(), rule);
+        return result;
     }
     
     @Override

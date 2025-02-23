@@ -18,58 +18,83 @@
 package org.apache.shardingsphere.authority.rule;
 
 import org.apache.shardingsphere.authority.config.AuthorityRuleConfiguration;
-import org.apache.shardingsphere.infra.config.algorithm.AlgorithmConfiguration;
+import org.apache.shardingsphere.authority.config.UserConfiguration;
+import org.apache.shardingsphere.infra.algorithm.core.config.AlgorithmConfiguration;
 import org.apache.shardingsphere.infra.metadata.user.Grantee;
 import org.apache.shardingsphere.infra.metadata.user.ShardingSphereUser;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertFalse;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public final class AuthorityRuleTest {
+class AuthorityRuleTest {
     
     @Test
-    public void assertFindUser() {
-        AuthorityRule rule = createAuthorityRule();
-        Optional<ShardingSphereUser> actual = rule.findUser(new Grantee("admin", "localhost"));
+    void assertGetAuthenticatorTypeWithAuthenticationMethodName() {
+        ShardingSphereUser user = new ShardingSphereUser("admin", "", "127.0.0.1", "foo", false);
+        assertThat(createAuthorityRule(null).getAuthenticatorType(user), is("FOO_AUTHENTICATION"));
+    }
+    
+    @Test
+    void assertGetAuthenticatorTypeWithDefaultAuthenticator() {
+        ShardingSphereUser user = new ShardingSphereUser("admin", "", "127.0.0.1", "bar", false);
+        assertThat(createAuthorityRule("foo").getAuthenticatorType(user), is("FOO_AUTHENTICATION"));
+    }
+    
+    @Test
+    void assertGetEmptyAuthenticatorType() {
+        ShardingSphereUser user = new ShardingSphereUser("admin", "", "127.0.0.1", "none", false);
+        assertThat(createAuthorityRule(null).getAuthenticatorType(user), is(""));
+    }
+    
+    @Test
+    void assertGetGrantees() {
+        List<Grantee> actual = new ArrayList<>(createAuthorityRule(null).getGrantees());
+        assertThat(actual.size(), is(2));
+        assertThat(actual.get(0), is(new Grantee("root", "localhost")));
+        assertThat(actual.get(1), is(new Grantee("admin", "localhost")));
+    }
+    
+    @Test
+    void assertFindUser() {
+        Grantee toBefoundGrantee = new Grantee("admin", "localhost");
+        Optional<ShardingSphereUser> actual = createAuthorityRule(null).findUser(toBefoundGrantee);
         assertTrue(actual.isPresent());
-        assertThat(actual.get().getGrantee().getUsername(), is("admin"));
-        assertThat(actual.get().getGrantee().getHostname(), is("localhost"));
+        assertThat(actual.get().getGrantee(), is(toBefoundGrantee));
     }
     
     @Test
-    public void assertNotFindUser() {
-        assertFalse(createAuthorityRule().findUser(new Grantee("admin", "127.0.0.1")).isPresent());
+    void assertNotFoundUser() {
+        assertFalse(createAuthorityRule(null).findUser(new Grantee("admin", "127.0.0.1")).isPresent());
     }
     
     @Test
-    public void assertFindPrivileges() {
-        assertTrue(createAuthorityRule().findPrivileges(new Grantee("admin", "localhost")).isPresent());
+    void assertFindPrivileges() {
+        assertTrue(createAuthorityRule(null).findPrivileges(new Grantee("admin", "localhost")).isPresent());
     }
     
     @Test
-    public void assertRefresh() {
-        Collection<ShardingSphereUser> users = new LinkedList<>();
-        users.add(new ShardingSphereUser("root", "root", "localhost"));
-        users.add(new ShardingSphereUser("admin", "123456", "localhost"));
-        users.add(new ShardingSphereUser("sharding-sphere", "123456", "127.0.0.1"));
-        AuthorityRule rule = createAuthorityRule();
-        rule.refresh(Collections.emptyMap(), users);
-        assertTrue(rule.findPrivileges(new Grantee("sharding-sphere", "localhost")).isPresent());
+    void assertNotFoundPrivileges() {
+        assertFalse(createAuthorityRule(null).findPrivileges(new Grantee("not_found", "")).isPresent());
     }
     
-    private AuthorityRule createAuthorityRule() {
-        Collection<ShardingSphereUser> users = new LinkedList<>();
-        users.add(new ShardingSphereUser("root", "root", "localhost"));
-        users.add(new ShardingSphereUser("admin", "123456", "localhost"));
-        return new AuthorityRule(new AuthorityRuleConfiguration(users, new AlgorithmConfiguration("ALL_PERMITTED", new Properties())), Collections.emptyMap());
+    private AuthorityRule createAuthorityRule(final String defaultAuthenticator) {
+        Collection<UserConfiguration> userConfigs = Arrays.asList(
+                new UserConfiguration("root", "root", "localhost", null, false),
+                new UserConfiguration("admin", "123456", "localhost", null, false));
+        AlgorithmConfiguration privilegeProvider = new AlgorithmConfiguration("FIXTURE", new Properties());
+        AuthorityRuleConfiguration ruleConfig = new AuthorityRuleConfiguration(
+                userConfigs, privilegeProvider, Collections.singletonMap("foo", new AlgorithmConfiguration("FOO_AUTHENTICATION", new Properties())), defaultAuthenticator);
+        return new AuthorityRule(ruleConfig);
     }
 }

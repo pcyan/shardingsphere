@@ -17,17 +17,12 @@
 
 package org.apache.shardingsphere.infra.route;
 
-import org.apache.shardingsphere.infra.binder.QueryContext;
-import org.apache.shardingsphere.infra.config.props.ConfigurationProperties;
-import org.apache.shardingsphere.infra.context.ConnectionContext;
-import org.apache.shardingsphere.infra.metadata.database.ShardingSphereDatabase;
-import org.apache.shardingsphere.infra.route.context.RouteContext;
 import org.apache.shardingsphere.infra.rule.ShardingSphereRule;
-import org.apache.shardingsphere.infra.util.spi.annotation.SingletonSPI;
-import org.apache.shardingsphere.infra.util.spi.type.ordered.OrderedSPI;
+import org.apache.shardingsphere.infra.spi.annotation.SingletonSPI;
+import org.apache.shardingsphere.infra.spi.type.ordered.OrderedSPI;
 
 /**
- * SQL Router.
+ * SQL router.
  * 
  * @param <T> type of rule
  */
@@ -35,25 +30,17 @@ import org.apache.shardingsphere.infra.util.spi.type.ordered.OrderedSPI;
 public interface SQLRouter<T extends ShardingSphereRule> extends OrderedSPI<T> {
     
     /**
-     * Create route context.
+     * Get SQL router type.
      *
-     * @param queryContext query context
-     * @param database database
-     * @param rule rule
-     * @param props configuration properties
-     * @param connectionContext connection context
-     * @return route context
+     * @return SQL router type
      */
-    RouteContext createRouteContext(QueryContext queryContext, ShardingSphereDatabase database, T rule, ConfigurationProperties props, ConnectionContext connectionContext);
+    Type getType();
     
     /**
-     * Decorate route context.
-     *  @param routeContext route context
-     * @param queryContext query context
-     * @param database database
-     * @param rule rule
-     * @param props configuration properties
-     * @param connectionContext connection context
+     * SQL router type.
      */
-    void decorateRouteContext(RouteContext routeContext, QueryContext queryContext, ShardingSphereDatabase database, T rule, ConfigurationProperties props, ConnectionContext connectionContext);
+    enum Type {
+        
+        DATA_NODE, DATA_SOURCE
+    }
 }

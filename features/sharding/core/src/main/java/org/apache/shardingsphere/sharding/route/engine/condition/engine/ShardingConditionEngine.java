@@ -17,22 +17,40 @@
 
 package org.apache.shardingsphere.sharding.route.engine.condition.engine;
 
+import lombok.RequiredArgsConstructor;
+import org.apache.shardingsphere.infra.binder.context.statement.SQLStatementContext;
+import org.apache.shardingsphere.infra.binder.context.statement.dml.InsertStatementContext;
+import org.apache.shardingsphere.infra.metadata.database.ShardingSphereDatabase;
+import org.apache.shardingsphere.infra.metadata.database.rule.RuleMetaData;
 import org.apache.shardingsphere.sharding.route.engine.condition.ShardingCondition;
-import org.apache.shardingsphere.infra.binder.statement.SQLStatementContext;
+import org.apache.shardingsphere.sharding.rule.ShardingRule;
+import org.apache.shardingsphere.timeservice.core.rule.TimestampServiceRule;
 
 import java.util.List;
 
 /**
  * Sharding condition engine.
  */
-public interface ShardingConditionEngine<T extends SQLStatementContext<?>> {
+@RequiredArgsConstructor
+public final class ShardingConditionEngine {
+    
+    private final RuleMetaData globalRuleMetaData;
+    
+    private final ShardingSphereDatabase database;
+    
+    private final ShardingRule shardingRule;
     
     /**
      * Create sharding conditions.
      *
      * @param sqlStatementContext SQL statement context
-     * @param parameters SQL parameters
+     * @param params SQL parameters
      * @return sharding conditions
      */
-    List<ShardingCondition> createShardingConditions(T sqlStatementContext, List<Object> parameters);
+    public List<ShardingCondition> createShardingConditions(final SQLStatementContext sqlStatementContext, final List<Object> params) {
+        TimestampServiceRule timestampServiceRule = globalRuleMetaData.getSingleRule(TimestampServiceRule.class);
+        return sqlStatementContext instanceof InsertStatementContext
+                ? new InsertClauseShardingConditionEngine(database, shardingRule, timestampServiceRule).createShardingConditions((InsertStatementContext) sqlStatementContext, params)
+                : new WhereClauseShardingConditionEngine(shardingRule, timestampServiceRule).createShardingConditions(sqlStatementContext, params);
+    }
 }

@@ -14,27 +14,73 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 grammar BaseRule;
 
 import Symbol, Keyword, Literals;
 
+literal
+    : STRING_ | (MINUS_)? INT_ | TRUE | FALSE
+    ;
+
+algorithmDefinition
+    : TYPE LP_ NAME EQ_ algorithmTypeName (COMMA_ propertiesDefinition)? RP_
+    ;
+
+algorithmTypeName
+    : STRING_ | buildInShardingAlgorithmType | buildInKeyGenerateAlgorithmType | buildInShardingAuditAlgorithmType
+    ;
+
+buildInShardingAlgorithmType
+    : MOD
+    | HASH_MOD
+    | VOLUME_RANGE
+    | BOUNDARY_RANGE
+    | AUTO_INTERVAL
+    | INLINE
+    | INTERVAL
+    | COMPLEX_INLINE
+    | HINT_INLINE
+    | CLASS_BASED
+    ;
+
+buildInKeyGenerateAlgorithmType
+    : SNOWFLAKE
+    | UUID
+    ;
+
+buildInShardingAuditAlgorithmType
+    : DML_SHARDING_CONDITIONS
+    ;
+
+propertiesDefinition
+    : PROPERTIES LP_ properties? RP_
+    ;
+
+properties
+    : property (COMMA_ property)*
+    ;
+
+property
+    : key=STRING_ EQ_ value=literal
+    ;
+
 tableName
-    : IDENTIFIER
+    : IDENTIFIER_
     ;
 
 shardingAlgorithmName
-    : IDENTIFIER
+    : IDENTIFIER_
     ;
 
 keyGeneratorName
-    : IDENTIFIER
+    : IDENTIFIER_
     ;
 
 auditorName
-    : IDENTIFIER
+    : IDENTIFIER_
     ;
 
-ifExists
-    : IF EXISTS
+ruleName
+    : IDENTIFIER_
     ;

@@ -37,12 +37,4 @@ public interface LockContext {
      * @param lockDefinition lock definition
      */
     void unlock(LockDefinition lockDefinition);
-    
-    /**
-     *  Is locked.
-     *
-     * @param lockDefinition lock definition
-     * @return is locked or not
-     */
-    boolean isLocked(LockDefinition lockDefinition);
 }

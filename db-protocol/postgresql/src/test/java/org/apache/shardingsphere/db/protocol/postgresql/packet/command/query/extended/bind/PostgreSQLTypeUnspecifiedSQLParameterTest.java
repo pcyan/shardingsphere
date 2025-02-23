@@ -17,17 +17,15 @@
 
 package org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.extended.bind;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public final class PostgreSQLTypeUnspecifiedSQLParameterTest {
+class PostgreSQLTypeUnspecifiedSQLParameterTest {
     
     @Test
-    public void assertToString() {
-        String timestampStr = "2020-08-23 15:57:03+08";
-        PostgreSQLTypeUnspecifiedSQLParameter parameter = new PostgreSQLTypeUnspecifiedSQLParameter(timestampStr);
-        assertThat(parameter.toString(), is(timestampStr));
+    void assertToString() {
+        assertThat(new PostgreSQLTypeUnspecifiedSQLParameter("2020-08-23 15:57:03+08").toString(), is("2020-08-23 15:57:03+08"));
     }
 }

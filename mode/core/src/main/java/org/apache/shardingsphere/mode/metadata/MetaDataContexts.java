@@ -17,50 +17,65 @@
 
 package org.apache.shardingsphere.mode.metadata;
 
-import lombok.Getter;
 import org.apache.shardingsphere.infra.metadata.ShardingSphereMetaData;
-import org.apache.shardingsphere.infra.metadata.data.ShardingSphereData;
-import org.apache.shardingsphere.infra.metadata.data.builder.ShardingSphereDataBuilderFactory;
-import org.apache.shardingsphere.infra.rule.identifier.type.ResourceHeldRule;
-import org.apache.shardingsphere.mode.metadata.persist.MetaDataPersistService;
-import org.apache.shardingsphere.mode.metadata.persist.data.ShardingSphereDataPersistService;
+import org.apache.shardingsphere.infra.metadata.statistics.ShardingSphereStatistics;
+import org.apache.shardingsphere.infra.metadata.statistics.builder.ShardingSphereStatisticsFactory;
+import org.apache.shardingsphere.mode.metadata.persist.MetaDataPersistFacade;
 
-import java.util.Optional;
+import javax.annotation.concurrent.ThreadSafe;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Meta data contexts.
  */
-@Getter
-public final class MetaDataContexts implements AutoCloseable {
+@ThreadSafe
+public final class MetaDataContexts {
     
-    private final MetaDataPersistService persistService;
+    private final AtomicReference<ShardingSphereMetaData> metaData = new AtomicReference<>();
     
-    private final ShardingSphereMetaData metaData;
+    private final AtomicReference<ShardingSphereStatistics> statistics = new AtomicReference<>();
     
-    private final ShardingSphereData shardingSphereData;
-    
-    public MetaDataContexts(final MetaDataPersistService persistService, final ShardingSphereMetaData metaData) {
-        this.persistService = persistService;
-        this.metaData = metaData;
-        this.shardingSphereData = initShardingSphereData(persistService, metaData);
+    public MetaDataContexts(final ShardingSphereMetaData metaData, final ShardingSphereStatistics statistics) {
+        this.metaData.set(metaData);
+        this.statistics.set(statistics);
     }
     
-    private ShardingSphereData initShardingSphereData(final MetaDataPersistService persistService, final ShardingSphereMetaData metaData) {
-        Optional<ShardingSphereData> result = Optional.ofNullable(persistService.getShardingSphereDataPersistService()).flatMap(ShardingSphereDataPersistService::load);
-        if (result.isPresent()) {
-            return result.get();
-        }
-        if (metaData.getDatabases().isEmpty()) {
-            return new ShardingSphereData();
-        }
-        return Optional.ofNullable(metaData.getDatabases().values().iterator().next().getProtocolType())
-                .flatMap(protocolType -> ShardingSphereDataBuilderFactory.getInstance(protocolType).map(builder -> builder.build(metaData))).orElseGet(ShardingSphereData::new);
+    /**
+     * Get ShardingSphere meta data.
+     *
+     * @return got meta data
+     */
+    public ShardingSphereMetaData getMetaData() {
+        return metaData.get();
     }
     
-    @Override
-    public void close() {
-        persistService.getRepository().close();
-        metaData.getGlobalRuleMetaData().findRules(ResourceHeldRule.class).forEach(ResourceHeldRule::closeStaleResource);
-        metaData.getDatabases().values().forEach(each -> each.getRuleMetaData().findRules(ResourceHeldRule.class).forEach(ResourceHeldRule::closeStaleResource));
+    /**
+     * Get ShardingSphere statistics.
+     *
+     * @return got statistics
+     */
+    public ShardingSphereStatistics getStatistics() {
+        return statistics.get();
+    }
+    
+    /**
+     * Update meta data contexts.
+     *
+     * @param newMetaDataContexts new meta data contexts
+     */
+    public void update(final MetaDataContexts newMetaDataContexts) {
+        this.metaData.set(newMetaDataContexts.getMetaData());
+        this.statistics.set(newMetaDataContexts.getStatistics());
+    }
+    
+    /**
+     * Update meta data contexts.
+     *
+     * @param metaData meta data
+     * @param metaDataPersistFacade meta data persist facade
+     */
+    public void update(final ShardingSphereMetaData metaData, final MetaDataPersistFacade metaDataPersistFacade) {
+        this.metaData.set(metaData);
+        this.statistics.set(ShardingSphereStatisticsFactory.create(metaData, metaDataPersistFacade.getStatisticsService().load(metaData)));
     }
 }

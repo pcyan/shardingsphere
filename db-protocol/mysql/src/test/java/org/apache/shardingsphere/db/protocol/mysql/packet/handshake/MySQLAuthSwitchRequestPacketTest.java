@@ -18,29 +18,48 @@
 package org.apache.shardingsphere.db.protocol.mysql.packet.handshake;
 
 import org.apache.shardingsphere.db.protocol.mysql.payload.MySQLPacketPayload;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
-public final class MySQLAuthSwitchRequestPacketTest {
+@ExtendWith(MockitoExtension.class)
+class MySQLAuthSwitchRequestPacketTest {
     
     @Mock
-    private MySQLAuthPluginData authPluginData;
+    private MySQLAuthenticationPluginData authPluginData;
     
     @Mock
     private MySQLPacketPayload payload;
     
     @Test
-    public void assertWrite() {
+    void assertNewWithInvalidHeader() {
+        MySQLPacketPayload payload = mock(MySQLPacketPayload.class);
+        assertThrows(IllegalArgumentException.class, () -> new MySQLAuthSwitchRequestPacket(payload));
+    }
+    
+    @Test
+    void assertNewWithValidHeader() {
+        MySQLPacketPayload payload = mock(MySQLPacketPayload.class);
+        when(payload.readInt1()).thenReturn(MySQLAuthSwitchRequestPacket.HEADER);
+        when(payload.readStringNul()).thenReturn("foo_auth");
+        MySQLAuthSwitchRequestPacket packet = new MySQLAuthSwitchRequestPacket(payload);
+        assertThat(packet.getAuthPluginName(), is("foo_auth"));
+    }
+    
+    @Test
+    void assertWrite() {
         when(authPluginData.getAuthenticationPluginData()).thenReturn(new byte[]{0x11, 0x22});
-        MySQLAuthSwitchRequestPacket authSwitchRequestPacket = new MySQLAuthSwitchRequestPacket(1, "plugin", authPluginData);
+        MySQLAuthSwitchRequestPacket authSwitchRequestPacket = new MySQLAuthSwitchRequestPacket("plugin", authPluginData);
         authSwitchRequestPacket.write(payload);
         verify(payload).writeInt1(0xfe);
         verify(payload, times(2)).writeStringNul(anyString());

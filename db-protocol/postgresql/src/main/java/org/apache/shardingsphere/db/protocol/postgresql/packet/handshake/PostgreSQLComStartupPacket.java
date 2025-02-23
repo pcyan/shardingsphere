@@ -17,6 +17,7 @@
 
 package org.apache.shardingsphere.db.protocol.postgresql.packet.handshake;
 
+import lombok.Getter;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.PostgreSQLPacket;
 import org.apache.shardingsphere.db.protocol.postgresql.payload.PostgreSQLPacketPayload;
 
@@ -26,7 +27,7 @@ import java.util.Map;
 /**
  * Startup packet for PostgreSQL.
  */
-public final class PostgreSQLComStartupPacket implements PostgreSQLPacket {
+public final class PostgreSQLComStartupPacket extends PostgreSQLPacket {
     
     private static final String DATABASE_NAME_KEY = "database";
     
@@ -34,10 +35,14 @@ public final class PostgreSQLComStartupPacket implements PostgreSQLPacket {
     
     private static final String CLIENT_ENCODING_KEY = "client_encoding";
     
+    @Getter
+    private final int version;
+    
     private final Map<String, String> parametersMap = new HashMap<>();
     
     public PostgreSQLComStartupPacket(final PostgreSQLPacketPayload payload) {
-        payload.skipReserved(8);
+        payload.skipReserved(4);
+        version = payload.readInt4();
         while (payload.bytesBeforeZero() > 0) {
             parametersMap.put(payload.readStringNul(), payload.readStringNul());
         }
@@ -45,7 +50,7 @@ public final class PostgreSQLComStartupPacket implements PostgreSQLPacket {
     
     /**
      * Get database.
-     * 
+     *
      * @return database
      */
     public String getDatabase() {
@@ -53,17 +58,17 @@ public final class PostgreSQLComStartupPacket implements PostgreSQLPacket {
     }
     
     /**
-     * Get user.
-     * 
-     * @return user
+     * Get username.
+     *
+     * @return username
      */
-    public String getUser() {
+    public String getUsername() {
         return parametersMap.get(USER_NAME_KEY);
     }
     
     /**
      * Get client encoding.
-     * 
+     *
      * @return client encoding
      */
     public String getClientEncoding() {
@@ -71,6 +76,6 @@ public final class PostgreSQLComStartupPacket implements PostgreSQLPacket {
     }
     
     @Override
-    public void write(final PostgreSQLPacketPayload payload) {
+    protected void write(final PostgreSQLPacketPayload payload) {
     }
 }

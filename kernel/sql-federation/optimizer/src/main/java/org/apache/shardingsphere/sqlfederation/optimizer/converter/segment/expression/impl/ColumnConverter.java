@@ -17,27 +17,39 @@
 
 package org.apache.shardingsphere.sqlfederation.optimizer.converter.segment.expression.impl;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import org.apache.calcite.sql.SqlIdentifier;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.parser.SqlParserPos;
-import org.apache.shardingsphere.sql.parser.sql.common.segment.dml.column.ColumnSegment;
-import org.apache.shardingsphere.sql.parser.sql.common.segment.generic.OwnerSegment;
-import org.apache.shardingsphere.sqlfederation.optimizer.converter.segment.SQLSegmentConverter;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.dml.column.ColumnSegment;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.generic.OwnerSegment;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
  * Column converter.
  */
-public final class ColumnConverter implements SQLSegmentConverter<ColumnSegment, SqlNode> {
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public final class ColumnConverter {
     
-    @Override
-    public Optional<SqlNode> convert(final ColumnSegment segment) {
-        Optional<OwnerSegment> owner = segment.getOwner();
-        String columnName = segment.getIdentifier().getValue();
-        SqlIdentifier sqlIdentifier = owner.map(optional -> new SqlIdentifier(Arrays.asList(optional.getIdentifier().getValue(), columnName), SqlParserPos.ZERO))
-                .orElseGet(() -> new SqlIdentifier(columnName, SqlParserPos.ZERO));
-        return Optional.of(sqlIdentifier);
+    /**
+     * Convert column segment to sql node.
+     *
+     * @param segment column segment
+     * @return sql node
+     */
+    public static Optional<SqlNode> convert(final ColumnSegment segment) {
+        List<String> names = new ArrayList<>();
+        segment.getOwner().ifPresent(optional -> addOwnerNames(names, optional));
+        names.add(segment.getIdentifier().getValue());
+        return Optional.of(new SqlIdentifier(names, SqlParserPos.ZERO));
+    }
+    
+    private static void addOwnerNames(final List<String> names, final OwnerSegment owner) {
+        owner.getOwner().ifPresent(optional -> addOwnerNames(names, optional));
+        names.add(owner.getIdentifier().getValue());
     }
 }

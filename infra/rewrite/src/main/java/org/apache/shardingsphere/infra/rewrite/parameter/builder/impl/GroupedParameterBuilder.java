@@ -40,12 +40,12 @@ public final class GroupedParameterBuilder implements ParameterBuilder {
     @Setter
     private String derivedColumnName;
     
-    public GroupedParameterBuilder(final List<List<Object>> groupedParameters, final List<Object> genericParameters) {
-        parameterBuilders = new ArrayList<>(groupedParameters.size());
-        for (List<Object> each : groupedParameters) {
+    public GroupedParameterBuilder(final List<List<Object>> groupedParams, final List<Object> genericParams) {
+        parameterBuilders = new ArrayList<>(groupedParams.size());
+        for (List<Object> each : groupedParams) {
             parameterBuilders.add(new StandardParameterBuilder(each));
         }
-        genericParameterBuilder = new StandardParameterBuilder(genericParameters);
+        genericParameterBuilder = new StandardParameterBuilder(genericParams);
     }
     
     @Override
@@ -60,7 +60,7 @@ public final class GroupedParameterBuilder implements ParameterBuilder {
     
     /**
      * Get parameters.
-     * 
+     *
      * @param count parameters group count
      * @return parameters
      */
@@ -70,7 +70,7 @@ public final class GroupedParameterBuilder implements ParameterBuilder {
     
     /**
      * Get derived column name.
-     * 
+     *
      * @return derived column name
      */
     public Optional<String> getDerivedColumnName() {

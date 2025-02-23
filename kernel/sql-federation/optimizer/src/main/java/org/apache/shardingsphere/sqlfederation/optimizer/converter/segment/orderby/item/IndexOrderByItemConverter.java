@@ -17,14 +17,17 @@
 
 package org.apache.shardingsphere.sqlfederation.optimizer.converter.segment.orderby.item;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import org.apache.calcite.sql.SqlBasicCall;
 import org.apache.calcite.sql.SqlLiteral;
 import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.SqlPostfixOperator;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.parser.SqlParserPos;
-import org.apache.shardingsphere.sqlfederation.optimizer.converter.segment.SQLSegmentConverter;
-import org.apache.shardingsphere.sql.parser.sql.common.constant.OrderDirection;
-import org.apache.shardingsphere.sql.parser.sql.common.segment.dml.order.item.IndexOrderByItemSegment;
+import org.apache.shardingsphere.infra.database.core.metadata.database.enums.NullsOrderType;
+import org.apache.shardingsphere.sql.parser.statement.core.enums.OrderDirection;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.dml.order.item.IndexOrderByItemSegment;
 
 import java.util.Collections;
 import java.util.Optional;
@@ -32,14 +35,24 @@ import java.util.Optional;
 /**
  *  Index order by item converter. 
  */
-public final class IndexOrderByItemConverter implements SQLSegmentConverter<IndexOrderByItemSegment, SqlNode> {
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public final class IndexOrderByItemConverter {
     
-    @Override
-    public Optional<SqlNode> convert(final IndexOrderByItemSegment segment) {
-        SqlNode sqlNode = SqlLiteral.createExactNumeric(String.valueOf(segment.getColumnIndex()), SqlParserPos.ZERO);
-        if (OrderDirection.DESC.equals(segment.getOrderDirection())) {
-            sqlNode = new SqlBasicCall(SqlStdOperatorTable.DESC, Collections.singletonList(sqlNode), SqlParserPos.ZERO);
+    /**
+     * Convert index order by item segment to sql node.
+     *
+     * @param segment index order by item segment
+     * @return sql node
+     */
+    public static Optional<SqlNode> convert(final IndexOrderByItemSegment segment) {
+        SqlNode result = SqlLiteral.createExactNumeric(String.valueOf(segment.getColumnIndex()), SqlParserPos.ZERO);
+        if (OrderDirection.DESC == segment.getOrderDirection()) {
+            result = new SqlBasicCall(SqlStdOperatorTable.DESC, Collections.singletonList(result), SqlParserPos.ZERO);
         }
-        return Optional.of(sqlNode);
+        if (segment.getNullsOrderType().isPresent()) {
+            SqlPostfixOperator nullsOrderType = NullsOrderType.FIRST == segment.getNullsOrderType().get() ? SqlStdOperatorTable.NULLS_FIRST : SqlStdOperatorTable.NULLS_LAST;
+            result = new SqlBasicCall(nullsOrderType, Collections.singletonList(result), SqlParserPos.ZERO);
+        }
+        return Optional.of(result);
     }
 }

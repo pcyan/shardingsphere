@@ -23,6 +23,14 @@ WS
     : [ \t\r\n] + ->skip
     ;
 
+TRUE
+    : T R U E
+    ;
+
+FALSE
+    : F A L S E
+    ;
+
 CREATE
     : C R E A T E
     ;
@@ -118,11 +126,31 @@ DEFAULT
 IF  
     : I F
     ;
-    
+
 EXISTS
     : E X I S T S
     ;
 
 COUNT
     : C O U N T
+    ;
+
+VALUE_MATCH
+    : V A L U E UL_ M A T C H
+    ;
+
+REGEX_MATCH
+    : R E G E X UL_ M A T C H
+    ;
+
+SQL_HINT
+    : S I M P L E UL_ H I N T
+    ;
+
+NOT
+    : N O T
+    ;
+
+PLUGINS
+    : P L U G I N S
     ;

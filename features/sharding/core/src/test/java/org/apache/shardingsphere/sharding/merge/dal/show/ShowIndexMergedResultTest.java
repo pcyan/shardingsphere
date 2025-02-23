@@ -17,41 +17,41 @@
 
 package org.apache.shardingsphere.sharding.merge.dal.show;
 
-import org.apache.shardingsphere.infra.binder.statement.SQLStatementContext;
+import org.apache.shardingsphere.infra.binder.context.statement.SQLStatementContext;
 import org.apache.shardingsphere.infra.executor.sql.execute.result.query.QueryResult;
-import org.apache.shardingsphere.infra.metadata.database.schema.decorator.model.ShardingSphereSchema;
+import org.apache.shardingsphere.infra.metadata.database.schema.model.ShardingSphereSchema;
 import org.apache.shardingsphere.sharding.rule.ShardingRule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.sql.SQLException;
 import java.util.Collections;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
-public final class ShowIndexMergedResultTest {
+@ExtendWith(MockitoExtension.class)
+class ShowIndexMergedResultTest {
     
     @Mock
-    private ShardingRule shardingRule;
+    private ShardingRule rule;
     
     @Mock
     private ShardingSphereSchema schema;
     
     @Test
-    public void assertNextForEmptyQueryResult() throws SQLException {
-        assertFalse(new ShowIndexMergedResult(shardingRule, mock(SQLStatementContext.class), schema, Collections.emptyList()).next());
+    void assertNextForEmptyQueryResult() throws SQLException {
+        assertFalse(new ShowIndexMergedResult(rule, mock(SQLStatementContext.class), schema, Collections.emptyList()).next());
     }
     
     @Test
-    public void assertNextForTableRuleIsPresent() throws SQLException {
-        assertTrue(new ShowIndexMergedResult(shardingRule, mock(SQLStatementContext.class), schema, Collections.singletonList(mockQueryResult())).next());
+    void assertNextForTableRuleIsPresent() throws SQLException {
+        assertTrue(new ShowIndexMergedResult(rule, mock(SQLStatementContext.class), schema, Collections.singletonList(mockQueryResult())).next());
     }
     
     private QueryResult mockQueryResult() throws SQLException {

@@ -17,11 +17,12 @@
 
 package org.apache.shardingsphere.infra.executor.sql.prepare.driver;
 
+import org.apache.shardingsphere.infra.database.core.type.DatabaseType;
 import org.apache.shardingsphere.infra.executor.sql.context.ExecutionUnit;
 import org.apache.shardingsphere.infra.executor.sql.execute.engine.ConnectionMode;
 import org.apache.shardingsphere.infra.executor.sql.execute.engine.driver.DriverExecutionUnit;
-import org.apache.shardingsphere.infra.util.spi.annotation.SingletonSPI;
-import org.apache.shardingsphere.infra.util.spi.type.typed.TypedSPI;
+import org.apache.shardingsphere.infra.spi.annotation.SingletonSPI;
+import org.apache.shardingsphere.infra.spi.type.typed.TypedSPI;
 
 import java.sql.SQLException;
 
@@ -38,14 +39,15 @@ public interface SQLExecutionUnitBuilder<T extends DriverExecutionUnit<?>, M ext
     
     /**
      * Build SQL execution unit.
-     * 
+     *
      * @param executionUnit execution unit
      * @param executorManager executor manager 
      * @param connection connection
      * @param connectionMode connection mode
      * @param option storage resource option
+     * @param databaseType database type
      * @return SQL execution unit
      * @throws SQLException SQL exception
      */
-    T build(ExecutionUnit executionUnit, M executorManager, C connection, ConnectionMode connectionMode, O option) throws SQLException;
+    T build(ExecutionUnit executionUnit, M executorManager, C connection, ConnectionMode connectionMode, O option, DatabaseType databaseType) throws SQLException;
 }

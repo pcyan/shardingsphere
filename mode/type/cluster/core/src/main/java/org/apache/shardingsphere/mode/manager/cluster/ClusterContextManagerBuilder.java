@@ -17,27 +17,35 @@
 
 package org.apache.shardingsphere.mode.manager.cluster;
 
+import org.apache.shardingsphere.infra.config.mode.ModeConfiguration;
+import org.apache.shardingsphere.infra.exception.core.ShardingSpherePreconditions;
 import org.apache.shardingsphere.infra.instance.ComputeNodeInstance;
-import org.apache.shardingsphere.infra.instance.InstanceContext;
-import org.apache.shardingsphere.infra.instance.InstanceContextAware;
-import org.apache.shardingsphere.infra.metadata.data.ShardingSphereDatabaseData;
+import org.apache.shardingsphere.infra.instance.ComputeNodeInstanceContext;
+import org.apache.shardingsphere.infra.instance.metadata.jdbc.JDBCInstanceMetaData;
+import org.apache.shardingsphere.infra.lock.LockContext;
+import org.apache.shardingsphere.infra.spi.ShardingSphereServiceLoader;
+import org.apache.shardingsphere.infra.spi.type.typed.TypedSPILoader;
 import org.apache.shardingsphere.infra.util.eventbus.EventBusContext;
-import org.apache.shardingsphere.mode.lock.ShardingSphereLockContext;
+import org.apache.shardingsphere.mode.deliver.DeliverEventSubscriber;
+import org.apache.shardingsphere.mode.deliver.DeliverEventSubscriberRegistry;
 import org.apache.shardingsphere.mode.manager.ContextManager;
-import org.apache.shardingsphere.mode.manager.ContextManagerBuilder;
-import org.apache.shardingsphere.mode.manager.ContextManagerBuilderParameter;
-import org.apache.shardingsphere.mode.manager.cluster.coordinator.ClusterContextManagerCoordinator;
-import org.apache.shardingsphere.mode.manager.cluster.coordinator.RegistryCenter;
-import org.apache.shardingsphere.mode.manager.cluster.coordinator.registry.workerid.generator.ClusterWorkerIdGenerator;
+import org.apache.shardingsphere.mode.manager.builder.ContextManagerBuilder;
+import org.apache.shardingsphere.mode.manager.builder.ContextManagerBuilderParameter;
+import org.apache.shardingsphere.mode.manager.cluster.dispatch.listener.DataChangedEventListenerRegistry;
+import org.apache.shardingsphere.mode.manager.cluster.exception.MissingRequiredClusterRepositoryConfigurationException;
+import org.apache.shardingsphere.mode.manager.cluster.lock.ClusterLockContext;
+import org.apache.shardingsphere.mode.manager.cluster.lock.GlobalLockPersistService;
+import org.apache.shardingsphere.mode.manager.cluster.workerid.ClusterWorkerIdGenerator;
 import org.apache.shardingsphere.mode.metadata.MetaDataContexts;
-import org.apache.shardingsphere.mode.metadata.MetaDataContextsFactory;
-import org.apache.shardingsphere.mode.metadata.persist.MetaDataPersistService;
+import org.apache.shardingsphere.mode.metadata.factory.MetaDataContextsFactory;
+import org.apache.shardingsphere.mode.metadata.persist.MetaDataPersistFacade;
 import org.apache.shardingsphere.mode.repository.cluster.ClusterPersistRepository;
 import org.apache.shardingsphere.mode.repository.cluster.ClusterPersistRepositoryConfiguration;
-import org.apache.shardingsphere.mode.repository.cluster.ClusterPersistRepositoryFactory;
+import org.apache.shardingsphere.mode.spi.repository.PersistRepository;
 
 import java.sql.SQLException;
-import java.util.Map.Entry;
+import java.util.Collection;
+import java.util.LinkedList;
 
 /**
  * Cluster context manager builder.
@@ -45,50 +53,47 @@ import java.util.Map.Entry;
 public final class ClusterContextManagerBuilder implements ContextManagerBuilder {
     
     @Override
-    public ContextManager build(final ContextManagerBuilderParameter parameter) throws SQLException {
-        ClusterPersistRepository repository = ClusterPersistRepositoryFactory.getInstance((ClusterPersistRepositoryConfiguration) parameter.getModeConfiguration().getRepository(),
-                parameter.getInstanceMetaData());
-        MetaDataPersistService persistService = new MetaDataPersistService(repository);
-        persistConfigurations(persistService, parameter);
-        RegistryCenter registryCenter = new RegistryCenter(repository, new EventBusContext(), parameter.getInstanceMetaData(), parameter.getDatabaseConfigs());
-        InstanceContext instanceContext = buildInstanceContext(registryCenter, parameter);
-        ClusterPersistRepository persistRepository = registryCenter.getRepository();
-        if (persistRepository instanceof InstanceContextAware) {
-            ((InstanceContextAware) persistRepository).setInstanceContext(instanceContext);
-        }
-        MetaDataContexts metaDataContexts = MetaDataContextsFactory.create(persistService, parameter, instanceContext, registryCenter.getStorageNodeStatusService().loadStorageNodes());
-        persistMetaData(metaDataContexts);
-        ContextManager result = new ContextManager(metaDataContexts, instanceContext);
-        registerOnline(persistService, registryCenter, parameter, result);
+    public ContextManager build(final ContextManagerBuilderParameter param, final EventBusContext eventBusContext) throws SQLException {
+        ModeConfiguration modeConfig = param.getModeConfiguration();
+        ClusterPersistRepositoryConfiguration config = (ClusterPersistRepositoryConfiguration) modeConfig.getRepository();
+        ComputeNodeInstanceContext computeNodeInstanceContext = new ComputeNodeInstanceContext(new ComputeNodeInstance(param.getInstanceMetaData(), param.getLabels()), modeConfig, eventBusContext);
+        ClusterPersistRepository repository = getClusterPersistRepository(config, computeNodeInstanceContext);
+        LockContext lockContext = new ClusterLockContext(new GlobalLockPersistService(repository));
+        computeNodeInstanceContext.init(new ClusterWorkerIdGenerator(repository, param.getInstanceMetaData().getId()), lockContext);
+        MetaDataContexts metaDataContexts = new MetaDataContextsFactory(new MetaDataPersistFacade(repository), computeNodeInstanceContext).create(param);
+        ContextManager result = new ContextManager(metaDataContexts, computeNodeInstanceContext, repository);
+        registerOnline(computeNodeInstanceContext, param, result);
+        new DeliverEventSubscriberRegistry(result.getComputeNodeInstanceContext().getEventBusContext()).register(createDeliverEventSubscribers(repository));
         return result;
     }
     
-    private void persistConfigurations(final MetaDataPersistService persistService, final ContextManagerBuilderParameter parameter) {
-        if (!parameter.isEmpty()) {
-            persistService.persistConfigurations(parameter.getDatabaseConfigs(), parameter.getGlobalRuleConfigs(), parameter.getProps());
+    private ClusterPersistRepository getClusterPersistRepository(final ClusterPersistRepositoryConfiguration config, final ComputeNodeInstanceContext computeNodeInstanceContext) {
+        ShardingSpherePreconditions.checkNotNull(config, MissingRequiredClusterRepositoryConfigurationException::new);
+        ClusterPersistRepository result = TypedSPILoader.getService(ClusterPersistRepository.class, config.getType(), config.getProps());
+        result.init(config, computeNodeInstanceContext);
+        return result;
+    }
+    
+    private void registerOnline(final ComputeNodeInstanceContext computeNodeInstanceContext, final ContextManagerBuilderParameter param, final ContextManager contextManager) {
+        contextManager.getPersistServiceFacade().getComputeNodePersistService().registerOnline(computeNodeInstanceContext.getInstance());
+        contextManager.getComputeNodeInstanceContext().getClusterInstanceRegistry().getAllClusterInstances()
+                .addAll(contextManager.getPersistServiceFacade().getComputeNodePersistService().loadAllInstances());
+        new DataChangedEventListenerRegistry(contextManager, getDatabaseNames(param, contextManager.getPersistServiceFacade().getMetaDataPersistFacade())).register();
+    }
+    
+    private Collection<String> getDatabaseNames(final ContextManagerBuilderParameter param, final MetaDataPersistFacade metaDataPersistFacade) {
+        return param.getInstanceMetaData() instanceof JDBCInstanceMetaData
+                ? param.getDatabaseConfigs().keySet()
+                : metaDataPersistFacade.getDatabaseMetaDataFacade().getDatabase().loadAllDatabaseNames();
+    }
+    
+    private Collection<DeliverEventSubscriber> createDeliverEventSubscribers(final PersistRepository repository) {
+        Collection<DeliverEventSubscriber> result = new LinkedList<>();
+        for (DeliverEventSubscriber each : ShardingSphereServiceLoader.getServiceInstances(DeliverEventSubscriber.class)) {
+            each.setRepository(repository);
+            result.add(each);
         }
-    }
-    
-    private InstanceContext buildInstanceContext(final RegistryCenter registryCenter, final ContextManagerBuilderParameter parameter) {
-        return new InstanceContext(new ComputeNodeInstance(parameter.getInstanceMetaData()), new ClusterWorkerIdGenerator(registryCenter, parameter.getInstanceMetaData()),
-                parameter.getModeConfiguration(), new ShardingSphereLockContext(registryCenter.getLockPersistService()), registryCenter.getEventBusContext());
-    }
-    
-    private void persistMetaData(final MetaDataContexts metaDataContexts) {
-        metaDataContexts.getMetaData().getDatabases().values().forEach(each -> each.getSchemas()
-                .forEach((schemaName, schema) -> metaDataContexts.getPersistService().getDatabaseMetaDataService().persist(each.getName(), schemaName, schema)));
-        for (Entry<String, ShardingSphereDatabaseData> entry : metaDataContexts.getShardingSphereData().getDatabaseData().entrySet()) {
-            entry.getValue().getSchemaData().forEach((schemaName, schemaData) -> metaDataContexts.getPersistService().getShardingSphereDataPersistService()
-                    .persist(entry.getKey(), schemaName, schemaData));
-        }
-    }
-    
-    private void registerOnline(final MetaDataPersistService persistService, final RegistryCenter registryCenter,
-                                final ContextManagerBuilderParameter parameter, final ContextManager contextManager) {
-        contextManager.getInstanceContext().getInstance().setLabels(parameter.getLabels());
-        contextManager.getInstanceContext().getAllClusterInstances().addAll(registryCenter.getComputeNodeStatusService().loadAllComputeNodeInstances());
-        new ClusterContextManagerCoordinator(persistService, registryCenter, contextManager);
-        registryCenter.onlineInstance(contextManager.getInstanceContext().getInstance());
+        return result;
     }
     
     @Override

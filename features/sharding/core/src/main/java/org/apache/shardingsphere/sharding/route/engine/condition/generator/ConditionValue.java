@@ -17,11 +17,13 @@
 
 package org.apache.shardingsphere.sharding.route.engine.condition.generator;
 
-import com.google.common.base.Preconditions;
-import org.apache.shardingsphere.sql.parser.sql.common.segment.dml.expr.ExpressionSegment;
-import org.apache.shardingsphere.sql.parser.sql.common.segment.dml.expr.simple.LiteralExpressionSegment;
-import org.apache.shardingsphere.sql.parser.sql.common.segment.dml.expr.simple.ParameterMarkerExpressionSegment;
+import org.apache.shardingsphere.infra.exception.core.ShardingSpherePreconditions;
+import org.apache.shardingsphere.sharding.exception.data.NotImplementComparableValueException;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.ExpressionSegment;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.simple.LiteralExpressionSegment;
+import org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.simple.ParameterMarkerExpressionSegment;
 
+import lombok.Getter;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,14 +36,17 @@ public final class ConditionValue {
     
     private final int parameterMarkerIndex;
     
-    public ConditionValue(final ExpressionSegment expressionSegment, final List<Object> parameters) {
-        value = getValue(expressionSegment, parameters);
+    @Getter
+    private boolean isNull;
+    
+    public ConditionValue(final ExpressionSegment expressionSegment, final List<Object> params) {
+        value = getValue(expressionSegment, params);
         parameterMarkerIndex = expressionSegment instanceof ParameterMarkerExpressionSegment ? ((ParameterMarkerExpressionSegment) expressionSegment).getParameterMarkerIndex() : -1;
     }
     
-    private Comparable<?> getValue(final ExpressionSegment expressionSegment, final List<Object> parameters) {
+    private Comparable<?> getValue(final ExpressionSegment expressionSegment, final List<Object> params) {
         if (expressionSegment instanceof ParameterMarkerExpressionSegment) {
-            return getValue((ParameterMarkerExpressionSegment) expressionSegment, parameters);
+            return getValue((ParameterMarkerExpressionSegment) expressionSegment, params);
         }
         if (expressionSegment instanceof LiteralExpressionSegment) {
             return getValue((LiteralExpressionSegment) expressionSegment);
@@ -49,11 +54,12 @@ public final class ConditionValue {
         return null;
     }
     
-    private Comparable<?> getValue(final ParameterMarkerExpressionSegment expressionSegment, final List<Object> parameters) {
+    private Comparable<?> getValue(final ParameterMarkerExpressionSegment expressionSegment, final List<Object> params) {
         int parameterMarkerIndex = expressionSegment.getParameterMarkerIndex();
-        if (parameterMarkerIndex < parameters.size()) {
-            Object result = parameters.get(parameterMarkerIndex);
-            Preconditions.checkArgument(result instanceof Comparable, "Sharding value must implements Comparable.");
+        if (parameterMarkerIndex < params.size()) {
+            Object result = params.get(parameterMarkerIndex);
+            isNull = null == result;
+            ShardingSpherePreconditions.checkState(null == result || result instanceof Comparable, () -> new NotImplementComparableValueException("Sharding", result));
             return (Comparable<?>) result;
         }
         return null;
@@ -61,13 +67,14 @@ public final class ConditionValue {
     
     private Comparable<?> getValue(final LiteralExpressionSegment expressionSegment) {
         Object result = expressionSegment.getLiterals();
-        Preconditions.checkArgument(result instanceof Comparable, "Sharding value must implements Comparable.");
+        isNull = null == result;
+        ShardingSpherePreconditions.checkState(null == result || result instanceof Comparable, () -> new NotImplementComparableValueException("Sharding", result));
         return (Comparable<?>) result;
     }
     
     /**
      * Get condition value.
-     * 
+     *
      * @return condition value
      */
     public Optional<Comparable<?>> getValue() {

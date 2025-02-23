@@ -19,12 +19,13 @@ package org.apache.shardingsphere.infra.yaml.schema.pojo;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.shardingsphere.infra.database.core.metadata.database.enums.TableType;
 import org.apache.shardingsphere.infra.util.yaml.YamlConfiguration;
 
 import java.util.Map;
 
 /**
- * ShardingSphere table metadata for YAML.
+ * ShardingSphere table meta data for YAML.
  */
 @Getter
 @Setter
@@ -37,4 +38,6 @@ public final class YamlShardingSphereTable implements YamlConfiguration {
     private Map<String, YamlShardingSphereIndex> indexes;
     
     private Map<String, YamlShardingSphereConstraint> constraints;
+    
+    private TableType type;
 }

@@ -19,8 +19,6 @@ package org.apache.shardingsphere.data.pipeline.core.metadata.node;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import org.apache.shardingsphere.data.pipeline.api.job.JobType;
-import org.apache.shardingsphere.data.pipeline.core.constant.DataPipelineConstants;
 
 import java.util.regex.Pattern;
 
@@ -30,36 +28,36 @@ import java.util.regex.Pattern;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class PipelineMetaDataNode {
     
-    private static final String JOB_PATTERN_PREFIX = DataPipelineConstants.DATA_PIPELINE_ROOT + "/jobs/(j\\d{2}\\d{2}[0-9a-z]+)";
+    private static final String JOB_PATTERN_PREFIX = PipelineNodePath.DATA_PIPELINE_ROOT + "/jobs/(j\\d{2}\\d{2}[0-9a-z]+)";
     
     public static final Pattern CONFIG_PATTERN = Pattern.compile(JOB_PATTERN_PREFIX + "/config");
     
     public static final Pattern BARRIER_PATTERN = Pattern.compile(JOB_PATTERN_PREFIX + "/barrier/(enable|disable)/\\d+");
     
     /**
-     * Get metadata data sources path.
+     * Get meta data data sources path.
      *
      * @param jobType job type
      * @return data sources path
      */
-    public static String getMetaDataDataSourcesPath(final JobType jobType) {
-        return String.join("/", getMetaDataRootPath(jobType), "dataSources");
+    public static String getMetaDataDataSourcesPath(final String jobType) {
+        return String.join("/", getMetaDataRootPath(jobType), "data_sources");
     }
     
-    private static String getMetaDataRootPath(final JobType jobType) {
+    private static String getMetaDataRootPath(final String jobType) {
         return null == jobType
-                ? String.join("/", DataPipelineConstants.DATA_PIPELINE_ROOT, "metadata")
-                : String.join("/", DataPipelineConstants.DATA_PIPELINE_ROOT, jobType.getLowercaseTypeName(), "metadata");
+                ? String.join("/", PipelineNodePath.DATA_PIPELINE_ROOT, "metadata")
+                : String.join("/", PipelineNodePath.DATA_PIPELINE_ROOT, jobType.toLowerCase(), "metadata");
     }
     
     /**
-     * Get metadata process configuration path.
+     * Get meta data process configuration path.
      *
      * @param jobType job type
      * @return data sources path
      */
-    public static String getMetaDataProcessConfigPath(final JobType jobType) {
-        return String.join("/", getMetaDataRootPath(jobType), "processConfig");
+    public static String getMetaDataProcessConfigPath(final String jobType) {
+        return String.join("/", getMetaDataRootPath(jobType), "process_config");
     }
     
     /**
@@ -73,7 +71,7 @@ public final class PipelineMetaDataNode {
     }
     
     private static String getJobsPath() {
-        return String.join("/", DataPipelineConstants.DATA_PIPELINE_ROOT, "jobs");
+        return String.join("/", PipelineNodePath.DATA_PIPELINE_ROOT, "jobs");
     }
     
     /**
@@ -108,22 +106,22 @@ public final class PipelineMetaDataNode {
     }
     
     /**
-     * Get job config path.
+     * Get job configuration path.
      *
      * @param jobId job id
      * @return job configuration path
      */
-    public static String getJobConfigPath(final String jobId) {
+    public static String getJobConfigurationPath(final String jobId) {
         return String.join("/", getJobRootPath(jobId), "config");
     }
     
     /**
-     * Get check latest job id path.
+     * Get latest check job id path.
      *
      * @param jobId job id
-     * @return check latest job id path
+     * @return latest check job id path
      */
-    public static String getCheckLatestJobIdPath(final String jobId) {
+    public static String getLatestCheckJobIdPath(final String jobId) {
         return String.join("/", getJobRootPath(jobId), "check", "latest_job_id");
     }
     
@@ -146,17 +144,6 @@ public final class PipelineMetaDataNode {
      */
     public static String getCheckJobIdsRootPath(final String jobId) {
         return String.join("/", getJobRootPath(jobId), "check", "job_ids");
-    }
-    
-    /**
-     * Get check job id path.
-     *
-     * @param jobId job id
-     * @param checkJobId check job id
-     * @return check job id path
-     */
-    public static String getCheckJobIdPath(final String jobId, final String checkJobId) {
-        return String.join("/", getCheckJobIdsRootPath(jobId), checkJobId);
     }
     
     /**

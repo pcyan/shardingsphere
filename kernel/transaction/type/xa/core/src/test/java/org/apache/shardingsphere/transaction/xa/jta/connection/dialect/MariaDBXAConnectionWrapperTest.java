@@ -18,12 +18,14 @@
 package org.apache.shardingsphere.transaction.xa.jta.connection.dialect;
 
 import com.zaxxer.hikari.HikariDataSource;
-import org.apache.shardingsphere.infra.database.type.DatabaseType;
-import org.apache.shardingsphere.infra.database.type.DatabaseTypeFactory;
+import org.apache.shardingsphere.infra.database.core.type.DatabaseType;
+import org.apache.shardingsphere.infra.database.core.spi.DatabaseTypedSPILoader;
+import org.apache.shardingsphere.infra.spi.type.typed.TypedSPILoader;
 import org.apache.shardingsphere.transaction.xa.fixture.DataSourceUtils;
-import org.apache.shardingsphere.transaction.xa.jta.connection.XAConnectionWrapperFactory;
-import org.apache.shardingsphere.transaction.xa.jta.datasource.XADataSourceFactory;
-import org.junit.Test;
+import org.apache.shardingsphere.transaction.xa.jta.connection.XAConnectionWrapper;
+import org.apache.shardingsphere.transaction.xa.jta.datasource.properties.XADataSourceDefinition;
+import org.apache.shardingsphere.transaction.xa.jta.datasource.swapper.DataSourceSwapper;
+import org.junit.jupiter.api.Test;
 import org.mariadb.jdbc.MariaDbConnection;
 import org.mariadb.jdbc.MariaXaResource;
 
@@ -38,19 +40,19 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public final class MariaDBXAConnectionWrapperTest {
+class MariaDBXAConnectionWrapperTest {
     
-    private final DatabaseType databaseType = DatabaseTypeFactory.getInstance("MariaDB");
+    private final DatabaseType databaseType = TypedSPILoader.getService(DatabaseType.class, "MariaDB");
     
     @Test
-    public void assertWrap() throws SQLException {
-        XAConnection actual = XAConnectionWrapperFactory.getInstance(databaseType).wrap(createXADataSource(), mockConnection());
+    void assertWrap() throws SQLException {
+        XAConnection actual = DatabaseTypedSPILoader.getService(XAConnectionWrapper.class, databaseType).wrap(createXADataSource(), mockConnection());
         assertThat(actual.getXAResource(), instanceOf(MariaXaResource.class));
     }
     
     private XADataSource createXADataSource() {
         DataSource dataSource = DataSourceUtils.build(HikariDataSource.class, databaseType, "foo_ds");
-        return XADataSourceFactory.build(databaseType, dataSource);
+        return new DataSourceSwapper(DatabaseTypedSPILoader.getService(XADataSourceDefinition.class, databaseType)).swap(dataSource);
     }
     
     private Connection mockConnection() throws SQLException {

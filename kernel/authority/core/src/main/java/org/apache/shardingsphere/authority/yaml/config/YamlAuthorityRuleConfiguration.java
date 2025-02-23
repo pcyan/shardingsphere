@@ -20,22 +20,30 @@ package org.apache.shardingsphere.authority.yaml.config;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.shardingsphere.authority.config.AuthorityRuleConfiguration;
-import org.apache.shardingsphere.infra.yaml.config.pojo.rule.YamlRuleConfiguration;
-import org.apache.shardingsphere.infra.yaml.config.pojo.algorithm.YamlAlgorithmConfiguration;
+import org.apache.shardingsphere.infra.algorithm.core.yaml.YamlAlgorithmConfiguration;
+import org.apache.shardingsphere.infra.yaml.config.pojo.rule.YamlGlobalRuleConfiguration;
+import org.apache.shardingsphere.mode.node.tuple.annotation.RepositoryTupleEntity;
 
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
+import java.util.Map;
 
 /**
  * Authority rule configuration for YAML.
  */
+@RepositoryTupleEntity(value = "authority", leaf = true)
 @Getter
 @Setter
-public final class YamlAuthorityRuleConfiguration implements YamlRuleConfiguration {
+public final class YamlAuthorityRuleConfiguration implements YamlGlobalRuleConfiguration {
     
-    private Collection<String> users = new LinkedList<>();
+    private Collection<YamlUserConfiguration> users = new LinkedList<>();
     
-    private YamlAlgorithmConfiguration provider;
+    private YamlAlgorithmConfiguration privilege;
+    
+    private Map<String, YamlAlgorithmConfiguration> authenticators = new LinkedHashMap<>();
+    
+    private String defaultAuthenticator;
     
     @Override
     public Class<AuthorityRuleConfiguration> getRuleConfigurationType() {

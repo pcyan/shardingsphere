@@ -19,28 +19,30 @@ package org.apache.shardingsphere.encrypt.fixture;
 
 import lombok.Getter;
 import org.apache.shardingsphere.encrypt.spi.EncryptAlgorithm;
-import org.apache.shardingsphere.encrypt.spi.context.EncryptContext;
+import org.apache.shardingsphere.encrypt.spi.EncryptAlgorithmMetaData;
+import org.apache.shardingsphere.infra.algorithm.core.config.AlgorithmConfiguration;
+import org.apache.shardingsphere.infra.algorithm.core.context.AlgorithmSQLContext;
 
 import java.util.Properties;
 
 @Getter
-public final class CoreEncryptAlgorithmFixture implements EncryptAlgorithm<Object, String> {
+public final class CoreEncryptAlgorithmFixture implements EncryptAlgorithm {
     
-    private Properties props;
-    
-    @Override
-    public void init(final Properties props) {
-        this.props = props;
-    }
+    private final EncryptAlgorithmMetaData metaData = new EncryptAlgorithmMetaData(true, true, false);
     
     @Override
-    public String encrypt(final Object plainValue, final EncryptContext encryptContext) {
+    public String encrypt(final Object plainValue, final AlgorithmSQLContext algorithmSQLContext) {
         return "encryptValue";
     }
     
     @Override
-    public Object decrypt(final String cipherValue, final EncryptContext encryptContext) {
+    public Object decrypt(final Object cipherValue, final AlgorithmSQLContext algorithmSQLContext) {
         return "decryptValue";
+    }
+    
+    @Override
+    public AlgorithmConfiguration toConfiguration() {
+        return new AlgorithmConfiguration(getType(), new Properties());
     }
     
     @Override

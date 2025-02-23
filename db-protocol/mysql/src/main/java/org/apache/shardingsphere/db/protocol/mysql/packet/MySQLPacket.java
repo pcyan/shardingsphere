@@ -19,16 +19,17 @@ package org.apache.shardingsphere.db.protocol.mysql.packet;
 
 import org.apache.shardingsphere.db.protocol.mysql.payload.MySQLPacketPayload;
 import org.apache.shardingsphere.db.protocol.packet.DatabasePacket;
+import org.apache.shardingsphere.db.protocol.payload.PacketPayload;
 
 /**
  * Database packet for MySQL.
  */
-public interface MySQLPacket extends DatabasePacket<MySQLPacketPayload> {
+public abstract class MySQLPacket implements DatabasePacket {
     
-    /**
-     * Get sequence ID.
-     *
-     * @return sequence ID
-     */
-    int getSequenceId();
+    @Override
+    public void write(final PacketPayload payload) {
+        write((MySQLPacketPayload) payload);
+    }
+    
+    protected abstract void write(MySQLPacketPayload payload);
 }

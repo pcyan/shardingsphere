@@ -21,14 +21,18 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.apache.shardingsphere.infra.config.database.DatabaseConfiguration;
 import org.apache.shardingsphere.infra.config.rule.RuleConfiguration;
-import org.apache.shardingsphere.infra.config.rule.checker.RuleConfigurationCheckerFactory;
+import org.apache.shardingsphere.infra.config.rule.checker.RuleConfigurationChecker;
 import org.apache.shardingsphere.infra.config.rule.function.DistributedRuleConfiguration;
 import org.apache.shardingsphere.infra.config.rule.function.EnhancedRuleConfiguration;
-import org.apache.shardingsphere.infra.instance.InstanceContext;
+import org.apache.shardingsphere.infra.database.core.type.DatabaseType;
+import org.apache.shardingsphere.infra.instance.ComputeNodeInstanceContext;
+import org.apache.shardingsphere.infra.metadata.database.resource.ResourceMetaData;
 import org.apache.shardingsphere.infra.rule.ShardingSphereRule;
+import org.apache.shardingsphere.infra.spi.type.ordered.OrderedSPILoader;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -46,18 +50,47 @@ public final class DatabaseRulesBuilder {
      * Build database rules.
      *
      * @param databaseName database name
+     * @param protocolType protocol type
      * @param databaseConfig database configuration
-     * @param instanceContext instance context
+     * @param computeNodeInstanceContext compute node instance context
+     * @param resourceMetaData  resource meta data
      * @return built rules
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public static Collection<ShardingSphereRule> build(final String databaseName, final DatabaseConfiguration databaseConfig, final InstanceContext instanceContext) {
+    public static Collection<ShardingSphereRule> build(final String databaseName, final DatabaseType protocolType, final DatabaseConfiguration databaseConfig,
+                                                       final ComputeNodeInstanceContext computeNodeInstanceContext, final ResourceMetaData resourceMetaData) {
         Collection<ShardingSphereRule> result = new LinkedList<>();
         for (Entry<RuleConfiguration, DatabaseRuleBuilder> entry : getRuleBuilderMap(databaseConfig).entrySet()) {
-            RuleConfigurationCheckerFactory.findInstance(entry.getKey()).ifPresent(optional -> optional.check(databaseName, entry.getKey(), databaseConfig.getDataSources(), result));
-            result.add(entry.getValue().build(entry.getKey(), databaseName, databaseConfig.getDataSources(), result, instanceContext));
+            RuleConfigurationChecker configChecker = OrderedSPILoader.getServicesByClass(
+                    RuleConfigurationChecker.class, Collections.singleton(entry.getKey().getClass())).get(entry.getKey().getClass());
+            if (null != configChecker) {
+                configChecker.check(databaseName, entry.getKey(), resourceMetaData.getDataSourceMap(), result);
+            }
+            result.add(entry.getValue().build(entry.getKey(), databaseName, protocolType, resourceMetaData, result, computeNodeInstanceContext));
         }
         return result;
+    }
+    
+    /**
+     * Build database rule.
+     *
+     * @param databaseName database name
+     * @param protocolType protocol type
+     * @param rules rules
+     * @param ruleConfig rule configuration
+     * @param computeNodeInstanceContext compute node instance context
+     * @param resourceMetaData  resource meta data
+     * @return built rule
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static ShardingSphereRule build(final String databaseName, final DatabaseType protocolType, final Collection<ShardingSphereRule> rules, final RuleConfiguration ruleConfig,
+                                           final ComputeNodeInstanceContext computeNodeInstanceContext, final ResourceMetaData resourceMetaData) {
+        DatabaseRuleBuilder databaseRuleBuilder = OrderedSPILoader.getServices(DatabaseRuleBuilder.class, Collections.singleton(ruleConfig)).get(ruleConfig);
+        RuleConfigurationChecker configChecker = OrderedSPILoader.getServicesByClass(RuleConfigurationChecker.class, Collections.singleton(ruleConfig.getClass())).get(ruleConfig.getClass());
+        if (null != configChecker) {
+            configChecker.check(databaseName, ruleConfig, resourceMetaData.getDataSourceMap(), rules);
+        }
+        return databaseRuleBuilder.build(ruleConfig, databaseName, protocolType, resourceMetaData, rules, computeNodeInstanceContext);
     }
     
     @SuppressWarnings("rawtypes")
@@ -72,13 +105,13 @@ public final class DatabaseRulesBuilder {
     @SuppressWarnings("rawtypes")
     private static Map<RuleConfiguration, DatabaseRuleBuilder> getDistributedRuleBuilderMap(final Collection<RuleConfiguration> ruleConfigs) {
         Collection<RuleConfiguration> distributedRuleConfigs = ruleConfigs.stream().filter(each -> isAssignableFrom(each, DistributedRuleConfiguration.class)).collect(Collectors.toList());
-        return DatabaseRuleBuilderFactory.getInstanceMap(distributedRuleConfigs, Comparator.reverseOrder());
+        return OrderedSPILoader.getServices(DatabaseRuleBuilder.class, distributedRuleConfigs, Comparator.reverseOrder());
     }
     
     @SuppressWarnings("rawtypes")
     private static Map<RuleConfiguration, DatabaseRuleBuilder> getEnhancedRuleBuilderMap(final Collection<RuleConfiguration> ruleConfigs) {
         Collection<RuleConfiguration> enhancedRuleConfigs = ruleConfigs.stream().filter(each -> isAssignableFrom(each, EnhancedRuleConfiguration.class)).collect(Collectors.toList());
-        return DatabaseRuleBuilderFactory.getInstanceMap(enhancedRuleConfigs);
+        return OrderedSPILoader.getServices(DatabaseRuleBuilder.class, enhancedRuleConfigs);
     }
     
     private static boolean isAssignableFrom(final RuleConfiguration ruleConfig, final Class<? extends RuleConfiguration> ruleConfigClass) {
@@ -89,7 +122,7 @@ public final class DatabaseRulesBuilder {
     private static Map<RuleConfiguration, DatabaseRuleBuilder> getMissedDefaultRuleBuilderMap(final Collection<DatabaseRuleBuilder> configuredBuilders) {
         Map<RuleConfiguration, DatabaseRuleBuilder> result = new LinkedHashMap<>();
         Map<DatabaseRuleBuilder, DefaultDatabaseRuleConfigurationBuilder> defaultBuilders =
-                DefaultDatabaseRuleConfigurationBuilderFactory.getInstances(getMissedDefaultRuleBuilders(configuredBuilders));
+                OrderedSPILoader.getServices(DefaultDatabaseRuleConfigurationBuilder.class, getMissedDefaultRuleBuilders(configuredBuilders));
         // TODO consider about order for new put items
         for (Entry<DatabaseRuleBuilder, DefaultDatabaseRuleConfigurationBuilder> entry : defaultBuilders.entrySet()) {
             result.put(entry.getValue().build(), entry.getKey());
@@ -100,6 +133,6 @@ public final class DatabaseRulesBuilder {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static Collection<DatabaseRuleBuilder> getMissedDefaultRuleBuilders(final Collection<DatabaseRuleBuilder> configuredBuilders) {
         Collection<Class<DatabaseRuleBuilder>> configuredBuilderClasses = configuredBuilders.stream().map(each -> (Class<DatabaseRuleBuilder>) each.getClass()).collect(Collectors.toSet());
-        return DatabaseRuleBuilderFactory.getInstances().stream().filter(each -> !configuredBuilderClasses.contains(each.getClass())).collect(Collectors.toList());
+        return OrderedSPILoader.getServices(DatabaseRuleBuilder.class).stream().filter(each -> !configuredBuilderClasses.contains(each.getClass())).collect(Collectors.toList());
     }
 }

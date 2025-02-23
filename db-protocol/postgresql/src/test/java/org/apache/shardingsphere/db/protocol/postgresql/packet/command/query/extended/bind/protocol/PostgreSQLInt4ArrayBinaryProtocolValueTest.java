@@ -20,27 +20,28 @@ package org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.ex
 import io.netty.buffer.ByteBuf;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.ByteBufTestUtils;
 import org.apache.shardingsphere.db.protocol.postgresql.payload.PostgreSQLPacketPayload;
-import org.apache.shardingsphere.infra.util.exception.external.sql.type.generic.UnsupportedSQLOperationException;
-import org.junit.Test;
+import org.apache.shardingsphere.infra.exception.generic.UnsupportedSQLOperationException;
+import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public final class PostgreSQLInt4ArrayBinaryProtocolValueTest {
+class PostgreSQLInt4ArrayBinaryProtocolValueTest {
     
     private PostgreSQLBinaryProtocolValue newInstance() {
         return new PostgreSQLInt4ArrayBinaryProtocolValue();
     }
     
-    @Test(expected = UnsupportedSQLOperationException.class)
-    public void assertGetColumnLength() {
-        newInstance().getColumnLength("val");
+    @Test
+    void assertGetColumnLength() {
+        assertThrows(UnsupportedSQLOperationException.class, () -> newInstance().getColumnLength("val"));
     }
     
     @Test
-    public void assertRead() {
+    void assertRead() {
         String parameterValue = "{\"11\",\"12\"}";
         int expectedLength = 4 + parameterValue.length();
         ByteBuf byteBuf = ByteBufTestUtils.createByteBuf(expectedLength);
@@ -48,14 +49,13 @@ public final class PostgreSQLInt4ArrayBinaryProtocolValueTest {
         byteBuf.writeCharSequence(parameterValue, StandardCharsets.ISO_8859_1);
         byteBuf.readInt();
         PostgreSQLPacketPayload payload = new PostgreSQLPacketPayload(byteBuf, StandardCharsets.UTF_8);
-        Object result = newInstance().read(payload, parameterValue.length());
-        assertThat(result, is(new int[]{11, 12}));
+        Object actual = newInstance().read(payload, parameterValue.length());
+        assertThat(actual, is(new int[]{11, 12}));
         assertThat(byteBuf.readerIndex(), is(expectedLength));
     }
     
-    @Test(expected = UnsupportedSQLOperationException.class)
-    public void assertWrite() {
-        newInstance().write(new PostgreSQLPacketPayload(null, StandardCharsets.UTF_8), "val");
+    @Test
+    void assertWrite() {
+        assertThrows(UnsupportedSQLOperationException.class, () -> newInstance().write(new PostgreSQLPacketPayload(null, StandardCharsets.UTF_8), "val"));
     }
-    
 }

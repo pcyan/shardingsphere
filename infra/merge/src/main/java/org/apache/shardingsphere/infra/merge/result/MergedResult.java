@@ -18,6 +18,7 @@
 package org.apache.shardingsphere.infra.merge.result;
 
 import java.io.InputStream;
+import java.io.Reader;
 import java.sql.SQLException;
 import java.util.Calendar;
 
@@ -28,7 +29,7 @@ public interface MergedResult {
     
     /**
      * Iterate next data.
-     * 
+     *
      * @return has next data
      * @throws SQLException SQL exception
      */
@@ -66,8 +67,17 @@ public interface MergedResult {
     InputStream getInputStream(int columnIndex, String type) throws SQLException;
     
     /**
+     * Get CharacterStream.
+     *
+     * @param columnIndex column index
+     * @return Reader
+     * @throws SQLException SQL exception
+     */
+    Reader getCharacterStream(int columnIndex) throws SQLException;
+    
+    /**
      * Judge ResultSet is null or not.
-     * 
+     *
      * @return ResultSet is null or not
      * @throws SQLException SQL exception
      */

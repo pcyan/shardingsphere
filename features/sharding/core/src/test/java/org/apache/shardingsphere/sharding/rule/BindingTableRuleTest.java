@@ -20,7 +20,7 @@ package org.apache.shardingsphere.sharding.rule;
 import org.apache.shardingsphere.sharding.api.config.rule.ShardingTableRuleConfiguration;
 import org.apache.shardingsphere.sharding.exception.metadata.ActualTableNotFoundException;
 import org.apache.shardingsphere.sharding.exception.metadata.BindingTableNotFoundException;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,65 +33,66 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public final class BindingTableRuleTest {
+class BindingTableRuleTest {
     
     @Test
-    public void assertHasLogicTable() {
+    void assertHasLogicTable() {
         assertTrue(createBindingTableRule().hasLogicTable("Logic_Table"));
     }
     
     @Test
-    public void assertNotHasLogicTable() {
+    void assertNotHasLogicTable() {
         assertFalse(createBindingTableRule().hasLogicTable("New_Table"));
     }
     
     @Test
-    public void assertGetBindingActualTablesSuccess() {
+    void assertGetBindingActualTablesSuccess() {
         assertThat(createBindingTableRule().getBindingActualTable("ds1", "Sub_Logic_Table", "LOGIC_TABLE", "table_1"), is("SUB_TABLE_1"));
     }
     
-    @Test(expected = ActualTableNotFoundException.class)
-    public void assertGetBindingActualTablesFailureWhenNotFound() {
-        createBindingTableRule().getBindingActualTable("no_ds", "Sub_Logic_Table", "LOGIC_TABLE", "table_1");
-    }
-    
-    @Test(expected = BindingTableNotFoundException.class)
-    public void assertGetBindingActualTablesFailureWhenLogicTableNotFound() {
-        createBindingTableRule().getBindingActualTable("ds0", "No_Logic_Table", "LOGIC_TABLE", "table_1");
+    @Test
+    void assertGetBindingActualTablesFailureWhenNotFound() {
+        assertThrows(ActualTableNotFoundException.class, () -> createBindingTableRule().getBindingActualTable("no_ds", "Sub_Logic_Table", "LOGIC_TABLE", "table_1"));
     }
     
     @Test
-    public void assertGetAllLogicTables() {
+    void assertGetBindingActualTablesFailureWhenLogicTableNotFound() {
+        assertThrows(BindingTableNotFoundException.class, () -> createBindingTableRule().getBindingActualTable("ds0", "No_Logic_Table", "LOGIC_TABLE", "table_1"));
+    }
+    
+    @Test
+    void assertGetAllLogicTables() {
         assertThat(createBindingTableRule().getAllLogicTables(), is(new LinkedHashSet<>(Arrays.asList("logic_table", "sub_logic_table"))));
     }
     
     @Test
-    public void assertGetTableRules() {
-        List<TableRule> tableRules = new ArrayList<>(createBindingTableRule().getTableRules().values());
-        assertThat(tableRules.size(), is(2));
-        assertThat(tableRules.get(0).getLogicTable(), is(createTableRule().getLogicTable()));
-        assertThat(tableRules.get(0).getActualDataNodes(), is(createTableRule().getActualDataNodes()));
-        assertThat(tableRules.get(1).getLogicTable(), is(createSubTableRule().getLogicTable()));
-        assertThat(tableRules.get(1).getActualDataNodes(), is(createSubTableRule().getActualDataNodes()));
+    void assertGetTableRules() {
+        List<ShardingTable> shardingTables = new ArrayList<>(createBindingTableRule().getShardingTables().values());
+        assertThat(shardingTables.size(), is(2));
+        assertThat(shardingTables.get(0).getLogicTable(), is(createShardingTable().getLogicTable()));
+        assertThat(shardingTables.get(0).getActualDataNodes(), is(createShardingTable().getActualDataNodes()));
+        assertThat(shardingTables.get(1).getLogicTable(), is(createSubShardingTable().getLogicTable()));
+        assertThat(shardingTables.get(1).getActualDataNodes(), is(createSubShardingTable().getActualDataNodes()));
     }
     
     private BindingTableRule createBindingTableRule() {
-        Map<String, TableRule> tableRules = Stream.of(createTableRule(), createSubTableRule())
+        Map<String, ShardingTable> shardingTables = Stream.of(createShardingTable(), createSubShardingTable())
                 .collect(Collectors.toMap(each -> each.getLogicTable().toLowerCase(), Function.identity(), (oldValue, currentValue) -> oldValue, LinkedHashMap::new));
         BindingTableRule result = new BindingTableRule();
-        result.getTableRules().putAll(tableRules);
+        result.getShardingTables().putAll(shardingTables);
         return result;
     }
     
-    private TableRule createTableRule() {
-        return new TableRule(new ShardingTableRuleConfiguration("LOGIC_TABLE", "ds${0..1}.table_${0..1}"), Arrays.asList("ds0", "ds1"), null);
+    private ShardingTable createShardingTable() {
+        return new ShardingTable(new ShardingTableRuleConfiguration("LOGIC_TABLE", "ds${0..1}.table_${0..1}"), Arrays.asList("ds0", "ds1"), null);
     }
     
-    private TableRule createSubTableRule() {
-        return new TableRule(new ShardingTableRuleConfiguration("SUB_LOGIC_TABLE", "ds${0..1}.SUB_TABLE_${0..1}"), Arrays.asList("ds0", "ds1"), null);
+    private ShardingTable createSubShardingTable() {
+        return new ShardingTable(new ShardingTableRuleConfiguration("SUB_LOGIC_TABLE", "ds${0..1}.SUB_TABLE_${0..1}"), Arrays.asList("ds0", "ds1"), null);
     }
 }

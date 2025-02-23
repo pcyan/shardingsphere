@@ -18,49 +18,47 @@
 package org.apache.shardingsphere.sqlfederation.rule;
 
 import lombok.Getter;
-import org.apache.shardingsphere.infra.executor.sql.execute.engine.driver.jdbc.JDBCExecutor;
-import org.apache.shardingsphere.infra.metadata.ShardingSphereMetaData;
-import org.apache.shardingsphere.infra.metadata.data.ShardingSphereData;
-import org.apache.shardingsphere.infra.rule.identifier.scope.GlobalRule;
-import org.apache.shardingsphere.infra.util.eventbus.EventBusContext;
-import org.apache.shardingsphere.sqlfederation.api.config.SQLFederationRuleConfiguration;
-import org.apache.shardingsphere.sqlfederation.factory.SQLFederationExecutorFactory;
-import org.apache.shardingsphere.sqlfederation.spi.SQLFederationExecutor;
+import org.apache.shardingsphere.infra.metadata.database.ShardingSphereDatabase;
+import org.apache.shardingsphere.infra.rule.scope.GlobalRule;
+import org.apache.shardingsphere.sqlfederation.config.SQLFederationRuleConfiguration;
+import org.apache.shardingsphere.sqlfederation.constant.SQLFederationOrder;
+import org.apache.shardingsphere.sqlfederation.optimizer.context.OptimizerContext;
+import org.apache.shardingsphere.sqlfederation.optimizer.context.OptimizerContextFactory;
+
+import java.util.Collection;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * SQL federation rule.
  */
+@Getter
 public final class SQLFederationRule implements GlobalRule {
     
-    @Getter
     private final SQLFederationRuleConfiguration configuration;
     
-    private final SQLFederationExecutor sqlFederationExecutor;
+    private final AtomicReference<OptimizerContext> optimizerContext;
     
-    public SQLFederationRule(final SQLFederationRuleConfiguration ruleConfig) {
+    public SQLFederationRule(final SQLFederationRuleConfiguration ruleConfig, final Collection<ShardingSphereDatabase> databases) {
         configuration = ruleConfig;
-        sqlFederationExecutor = SQLFederationExecutorFactory.getInstance(ruleConfig.getSqlFederationType());
-    }
-    
-    /**
-     * Get SQL federation executor.
-     *
-     * @param databaseName database name
-     * @param schemaName schema name
-     * @param metaData ShardingSphere meta data
-     * @param shardingSphereData ShardingSphere data
-     * @param jdbcExecutor jdbc executor
-     * @param eventBusContext event bus context
-     * @return created instance
-     */
-    public SQLFederationExecutor getSQLFederationExecutor(final String databaseName, final String schemaName, final ShardingSphereMetaData metaData, final ShardingSphereData shardingSphereData,
-                                                          final JDBCExecutor jdbcExecutor, final EventBusContext eventBusContext) {
-        sqlFederationExecutor.init(databaseName, schemaName, metaData, shardingSphereData, jdbcExecutor, eventBusContext);
-        return sqlFederationExecutor;
+        optimizerContext = new AtomicReference<>(OptimizerContextFactory.create(databases));
     }
     
     @Override
-    public String getType() {
-        return SQLFederationRule.class.getSimpleName();
+    public void refresh(final Collection<ShardingSphereDatabase> databases, final GlobalRuleChangedType changedType) {
+        optimizerContext.set(OptimizerContextFactory.create(databases));
+    }
+    
+    /**
+     * Get optimizer context.
+     *
+     * @return optimizer context
+     */
+    public OptimizerContext getOptimizerContext() {
+        return optimizerContext.get();
+    }
+    
+    @Override
+    public int getOrder() {
+        return SQLFederationOrder.ORDER;
     }
 }

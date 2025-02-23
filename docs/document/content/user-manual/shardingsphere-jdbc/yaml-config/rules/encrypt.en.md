@@ -14,23 +14,25 @@ Based on the YAML configuration, ShardingSphere automatically completes the crea
 rules:
 - !ENCRYPT
   tables:
-    <table-name> (+): # Encrypt table name
+    <table_name> (+): # Encrypt table name
       columns:
-        <column-name> (+): # Encrypt logic column name
-          cipherColumn: # Cipher column name
-          assistedQueryColumn (?):  # Assisted query column name
-          plainColumn (?): # Plain column name
-          encryptorName: # Encrypt algorithm name
-      queryWithCipherColumn(?): # The current table whether query with cipher column for data encrypt. 
+        <column_name> (+): # Encrypt logic column name
+          cipher:
+            name: # Cipher column name
+            encryptorName: # Cipher encrypt algorithm name
+          assistedQuery (?):
+            name: # Assisted query column name
+            encryptorName:  # Assisted query encrypt algorithm name
+          likeQuery (?):
+            name: # Like query column name
+            encryptorName:  # Like query encrypt algorithm name 
     
   # Encrypt algorithm configuration
   encryptors:
-    <encrypt-algorithm-name> (+): # Encrypt algorithm name
+    <encrypt_algorithm_name> (+): # Encrypt algorithm name
       type: # Encrypt algorithm type
       props: # Encrypt algorithm properties
         # ...
-
-  queryWithCipherColumn: # Whether query with cipher column for data encrypt. User you can use plaintext to query if have
 ```
 
 Please refer to [Built-in Encrypt Algorithm List](/en/user-manual/common-config/builtin-algorithm/encrypt) for more details about type of algorithm.
@@ -59,20 +61,32 @@ rules:
     t_user:
       columns:
         username:
-          plainColumn: username_plain
-          cipherColumn: username
-          encryptorName: name-encryptor
+          cipher:
+            name: username
+            encryptorName: aes_encryptor
+          assistedQuery:
+            name: assisted_query_username
+            encryptorName: assisted_encryptor
+          likeQuery:
+            name: like_query_username
+            encryptorName: like_encryptor
         pwd:
-          cipherColumn: pwd
-          assistedQueryColumn: assisted_query_pwd
-          encryptorName: pwd_encryptor
+          cipher:
+            name: pwd
+            encryptorName: aes_encryptor
+          assistedQuery:
+            name: assisted_query_pwd
+            encryptorName: assisted_encryptor
   encryptors:
-    name-encryptor:
+    aes_encryptor:
       type: AES
       props:
         aes-key-value: 123456abc
-    pwd_encryptor:
-      type: assistedTest
+        digest-algorithm-name: SHA-1
+    assisted_encryptor:
+      type: MD5
+    like_encryptor:
+      type: CHAR_DIGEST_LIKE
 ```
 
 Read the YAML configuration to create a data source according to the createDataSource method of YamlShardingSphereDataSourceFactory.

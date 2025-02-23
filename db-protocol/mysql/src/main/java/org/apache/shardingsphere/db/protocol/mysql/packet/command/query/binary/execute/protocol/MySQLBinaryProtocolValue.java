@@ -24,7 +24,7 @@ import java.sql.SQLException;
 /**
  * Binary protocol value for MySQL.
  *
- * @see <a href="https://dev.mysql.com/doc/internals/en/binary-protocol-value.html">Binary Protocol Value</a>
+ * @see <a href="https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_binary_resultset.html#sect_protocol_binary_resultset_row_value">Binary Protocol Value</a>
  */
 public interface MySQLBinaryProtocolValue {
     
@@ -32,10 +32,11 @@ public interface MySQLBinaryProtocolValue {
      * Read binary protocol value.
      *
      * @param payload payload operation for MySQL packet
+     * @param unsigned is unsigned value
      * @return binary value result
      * @throws SQLException SQL exception
      */
-    Object read(MySQLPacketPayload payload) throws SQLException;
+    Object read(MySQLPacketPayload payload, boolean unsigned) throws SQLException;
     
     /**
      * Write binary protocol value.

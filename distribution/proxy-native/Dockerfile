@@ -14,19 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-FROM busybox AS prepare
-
-RUN mkdir -p /conf/
-
-FROM oraclelinux:9-slim
-
-MAINTAINER ShardingSphere "dev@shardingsphere.apache.org"
-
-COPY --from=prepare /conf/ /conf
-
-ARG APP_NAME
-
-ADD target/${APP_NAME} ./
-
-ENTRYPOINT ./${APP_NAME} 3307 /conf
+FROM container-registry.oracle.com/os/oraclelinux:9-slim
+LABEL org.opencontainers.image.authors="ShardingSphere dev@shardingsphere.apache.org"
+ENV LOCAL_PATH=/opt/shardingsphere-proxy-native-bin
+ARG OUTPUT_DIRECTORY_NAME
+COPY target/${OUTPUT_DIRECTORY_NAME} ${LOCAL_PATH}
+ENTRYPOINT ["${LOCAL_PATH}/proxy-native", "3307", "${LOCAL_PATH}/conf", "0.0.0.0", "false"]

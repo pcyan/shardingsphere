@@ -17,45 +17,73 @@
 
 package org.apache.shardingsphere.data.pipeline.mysql.sqlbuilder;
 
-import org.apache.shardingsphere.data.pipeline.api.ingest.record.Column;
-import org.apache.shardingsphere.data.pipeline.api.ingest.record.DataRecord;
-import org.apache.shardingsphere.data.pipeline.api.metadata.LogicTableName;
-import org.apache.shardingsphere.data.pipeline.core.sqlbuilder.AbstractPipelineSQLBuilder;
+import org.apache.shardingsphere.data.pipeline.core.exception.job.CreateTableSQLGenerateException;
+import org.apache.shardingsphere.data.pipeline.core.ingest.record.Column;
+import org.apache.shardingsphere.data.pipeline.core.ingest.record.DataRecord;
+import org.apache.shardingsphere.data.pipeline.core.sqlbuilder.segment.PipelineSQLSegmentBuilder;
+import org.apache.shardingsphere.data.pipeline.core.sqlbuilder.dialect.DialectPipelineSQLBuilder;
 
-import java.util.Map;
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * MySQL pipeline SQL builder.
  */
-public final class MySQLPipelineSQLBuilder extends AbstractPipelineSQLBuilder {
+public final class MySQLPipelineSQLBuilder implements DialectPipelineSQLBuilder {
     
     @Override
-    public String buildInsertSQL(final String schemaName, final DataRecord dataRecord, final Map<LogicTableName, Set<String>> shardingColumnsMap) {
-        return super.buildInsertSQL(schemaName, dataRecord, shardingColumnsMap) + buildDuplicateUpdateSQL(dataRecord, shardingColumnsMap);
-    }
-    
-    private String buildDuplicateUpdateSQL(final DataRecord dataRecord, final Map<LogicTableName, Set<String>> shardingColumnsMap) {
-        StringBuilder result = new StringBuilder(" ON DUPLICATE KEY UPDATE ");
+    public Optional<String> buildInsertOnDuplicateClause(final DataRecord dataRecord) {
+        StringBuilder result = new StringBuilder("ON DUPLICATE KEY UPDATE ");
+        PipelineSQLSegmentBuilder sqlSegmentBuilder = new PipelineSQLSegmentBuilder(getType());
         for (int i = 0; i < dataRecord.getColumnCount(); i++) {
             Column column = dataRecord.getColumn(i);
-            if (column.isUniqueKey() || isShardingColumn(shardingColumnsMap, dataRecord.getTableName(), column.getName())) {
-                continue;
-            }
-            result.append(quote(column.getName())).append("=VALUES(").append(quote(column.getName())).append("),");
+            result.append(sqlSegmentBuilder.getEscapedIdentifier(column.getName())).append("=VALUES(").append(sqlSegmentBuilder.getEscapedIdentifier(column.getName())).append("),");
         }
         result.setLength(result.length() - 1);
-        return result.toString();
+        return Optional.of(result.toString());
     }
     
     @Override
-    public Optional<String> buildCRC32SQL(final String schemaName, final String tableName, final String column) {
-        return Optional.of(String.format("SELECT BIT_XOR(CAST(CRC32(%s) AS UNSIGNED)) AS checksum, COUNT(1) AS cnt FROM %s", quote(column), quote(tableName)));
+    public String buildCheckEmptyTableSQL(final String qualifiedTableName) {
+        return String.format("SELECT * FROM %s LIMIT 1", qualifiedTableName);
     }
     
     @Override
-    public String getType() {
+    public Optional<String> buildEstimatedCountSQL(final String catalogName, final String qualifiedTableName) {
+        return Optional.of(String.format("SELECT TABLE_ROWS FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '%s' AND TABLE_NAME = '%s'", catalogName, qualifiedTableName));
+    }
+    
+    @Override
+    public Optional<String> buildCRC32SQL(final String qualifiedTableName, final String columnName) {
+        return Optional.of(String.format("SELECT BIT_XOR(CAST(CRC32(%s) AS UNSIGNED)) AS checksum, COUNT(1) AS cnt FROM %s", columnName, qualifiedTableName));
+    }
+    
+    @Override
+    public Collection<String> buildCreateTableSQLs(final DataSource dataSource, final String schemaName, final String tableName) throws SQLException {
+        try (
+                Connection connection = dataSource.getConnection();
+                Statement statement = connection.createStatement();
+                ResultSet resultSet = statement.executeQuery(String.format("SHOW CREATE TABLE %s", tableName))) {
+            if (resultSet.next()) {
+                return Collections.singleton(resultSet.getString("create table"));
+            }
+        }
+        throw new CreateTableSQLGenerateException(tableName);
+    }
+    
+    @Override
+    public String wrapWithPageQuery(final String sql) {
+        return sql + " LIMIT ?";
+    }
+    
+    @Override
+    public String getDatabaseType() {
         return "MySQL";
     }
 }
